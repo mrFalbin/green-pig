@@ -1,0 +1,4 @@
+.DS_Store
+.idea
+vendor/*
+phpunit-4.0.0.phar

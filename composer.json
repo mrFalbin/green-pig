@@ -1,0 +1,35 @@
+{
+    "name": "falbin/green-pig",
+    "type": "library",
+    "description": "database assistant",
+    "keywords": ["oracle", "mysql", "database", "orm", "dao"],
+    "license": "MIT",
+    "minimum-stability": "beta",
+    "authors": [
+        {
+            "name": "Falbin",
+            "email": "ifalbin@yandex.ru",
+            "homepage": "http://falbin.ru",
+            "role": "Developer"
+        }
+    ],
+    "support": {
+        "email": "ifalbin@yandex.ru",
+        "docs": "https://falbin.ru/documentation/gp2/index.html",
+        "source": "https://github.com/mrFalbin/green-pig"
+    },
+    "require": {
+        "php": ">=5.4.0",
+        "ext-pdo": "*",
+        "ext-oci8": "*",
+        "ext-mbstring": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "GreenPig\\": "",
+            "GreenPig\\Database\\": "database",
+            "GreenPig\\Exception\\": "exception",
+            "GreenPig\\Log\\": "log"
+        }
+    }
+}
