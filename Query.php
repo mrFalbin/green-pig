@@ -362,8 +362,8 @@ class Query
         }
         // --- выполнение запроса и агригация, если нужно ---
         $result = $this->_execute($sql, 'all');
-        $result = BaseFun::arrKeyTrimLower($result); // !!!!! если не массив (для Оракла всегда массив, для Mysql проверить и сделать также, если это не так ))) )
         if ($scenario['aggregation']) {
+            $result = BaseFun::arrKeyTrimLower($result);
             $optionsOldLogics = $this->convertOptionsToOldLogics($options);
             $result = $this->aggregator($optionsOldLogics, $result);
             if ($isKeyPK) $this->_allAggregatorKeyPK($result, $optionsOldLogics);
