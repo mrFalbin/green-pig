@@ -235,7 +235,7 @@ class Query
         if ($nameColumn) {
             $nameColumn = BaseFun::trimLower($nameColumn);
             $result = BaseFun::arrKeyTrimLower($result); // !!!!! если не массив (у mysql)
-            $result = !empty($result[$nameColumn]) ? $result[$nameColumn] : null;
+            $result = isset($result[$nameColumn]) ? $result[$nameColumn] : null;
         }
         return $result;
     }
@@ -262,7 +262,7 @@ class Query
                 ) $aliasTable ";
         $result = $this->_execute($sql, 'first');
         $result = BaseFun::arrKeyTrimLower($result);
-        return $result['count_row'];
+        return (int)$result['count_row'];
     }
 
 
