@@ -57,7 +57,7 @@ class BaseFun
         $val = self::arrKeyTrimLower($settings);
         foreach ($arrPathSettings as $keySettings) {
             $keySettings = self::trimLower($keySettings);
-            if (empty($val[$keySettings]))  {
+            if (!isset($val[$keySettings])) {
                 if ($isException) throw new GreenPigException("В конфигурации отсутствует настройка $pathSettings", $settings);
                 else return null;
             }

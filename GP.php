@@ -17,7 +17,7 @@ class GP
     {
         // записываем $options в static::$config с минимальной проверкой на правильную структуру
         if (BaseFun::getSettings($options, 'db', false, false) !== null) {
-            $options = self::setDefaultDateFormat($options);
+            $options = self::setDefaultParameters($options);
             static::$config['default'] = $options;
         } else {
             // Настройки default должны быть обязательно, либо уже в массиве static::$config, либо в $options.
@@ -26,15 +26,16 @@ class GP
             foreach ($options as $nameConect => $arrSettings) {
                 // Если настройки db отсутствуют - будет брошено исключение
                 BaseFun::getSettings($arrSettings, 'db', false);
-                $arrSettings = self::setDefaultDateFormat($arrSettings);
+                $arrSettings = self::setDefaultParameters($arrSettings);
                 static::$config[$nameConect] = $arrSettings;
             }
         }
     }
 
 
-    private static function setDefaultDateFormat($options)
+    private static function setDefaultParameters($options)
     {
+        // ---------- Дефолтные значения для даты ----------
         if (BaseFun::getSettings($options, 'date', false, false) == null) {
             $rdbms = BaseFun::getSettings($options, 'rdbms');
             $phpFormat = 'd.m.Y H:i:s';
@@ -44,6 +45,13 @@ class GP
             $options['date'] = [
                 'php' => $phpFormat,
                 'sql' => $sqlFormat
+            ];
+        }
+        // ---------- Дефолтные значения для дебага ----------
+        if (BaseFun::getSettings($options, 'debug', false, false) == null) {
+            $options['debug'] = [
+                'isdebug' => true,
+                'maxnumberquery' => 100
             ];
         }
         return $options;

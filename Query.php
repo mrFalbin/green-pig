@@ -883,7 +883,10 @@ class Query
 
     public function debugInfo()
     {
-        return $this->debugInfo;
+        $isDebug = BaseFun::getSettings($this->settings, 'debug/isdebug', false);
+        $result = 'Debug is disabled in the settings.';
+        if ($isDebug) $result = $this->debugInfo;
+        return $result;
     }
 
 
@@ -905,6 +908,7 @@ class Query
         }
         else throw new GreenPigQueryException('Ошибочный формат переменной typeSelect', $typeSelect);
         $dbDebugInfo = $this->db->getDebugInfo();
+        $this->bufDebugInfo = [];
         if (!empty($dbDebugInfo[0]) && is_array($dbDebugInfo[0])) {
             foreach ($dbDebugInfo as $di) {
                 $this->bufDebugInfo[] = $di;
@@ -938,11 +942,19 @@ class Query
 
     private function endDI()
     {
-        $this->debugInfo[] = [
-            'querys' => $this->bufDebugInfo,
-            'allTime' => (microtime(true) - $this->timeStartQuerys)
-        ];
-        $this->bufDebugInfo = [];
+        $isDebug = BaseFun::getSettings($this->settings, 'debug/isdebug', false);
+        if ($isDebug) {
+            if (count($this->debugInfo) > 0) $numberQuery = $this->debugInfo[count($this->debugInfo) - 1]['numberQuery'] + 1;
+            else $numberQuery = 1;
+            $maxNumberQuery = (int)BaseFun::getSettings($this->settings, 'debug/maxnumberquery', false);
+            while (count($this->debugInfo) >= $maxNumberQuery) array_shift($this->debugInfo);
+            $this->debugInfo[] = [
+                'numberQuery' => $numberQuery,
+                'querys' => $this->bufDebugInfo,
+                'allTime' => (microtime(true) - $this->timeStartQuerys)
+            ];
+            $this->bufDebugInfo = [];
+        }
     }
 
 
