@@ -21,7 +21,7 @@ class MySql extends DB
             } catch (PDOException $e) {
                 throw new GreenPigDatabaseException($e->getMessage(), $e, null, null, null, $options);
             }
-        } else throw new GreenPigDatabaseException('Не переданы нужные для подключения к базе MySql параметры.', $options);
+        } else throw new GreenPigDatabaseException('The parameters required to connect to the MySql database were not passed.', $options);
         parent::__construct($nameConnection, $options);
     }
 

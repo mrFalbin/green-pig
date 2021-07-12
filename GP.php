@@ -61,7 +61,7 @@ class GP
     public static function configDate($formatDatePhp, $formatDateSql, $nameConnection = 'default')
     {
         $nameConnection = BaseFun::trimLower($nameConnection);
-        if (empty(static::$config[$nameConnection])) throw new GreenPigException("Неверное название подключения: $nameConnection", static::$config);
+        if (empty(static::$config[$nameConnection])) throw new GreenPigException("Invalid connection name: $nameConnection", static::$config);
         static::$config[$nameConnection]['date'] = [
             'php' => $formatDatePhp,
             'sql' => $formatDateSql
@@ -71,12 +71,12 @@ class GP
 
     public static function instance($nameConnection = 'default')
     {
-        if (empty(static::$config[$nameConnection])) throw new GreenPigException("Неверное название подключения: $nameConnection", static::$config);
+        if (empty(static::$config[$nameConnection])) throw new GreenPigException("Invalid connection name: $nameConnection", static::$config);
         $rdbms = BaseFun::getSettings(static::$config[$nameConnection], 'rdbms');
         $dbConfig = BaseFun::getSettings(static::$config[$nameConnection], 'db', false);
         if ($rdbms == 'oracle') $db = Oracle::instance($nameConnection, $dbConfig);
         elseif ($rdbms == 'mysql') $db = MySql::instance($nameConnection, $dbConfig);
-        else throw new GreenPigException("Неверное название rdbms: $rdbms (Должно быть либо 'Oracle', либо 'MySQL').", static::$config[$nameConnection]);
+        else throw new GreenPigException("Incorrect value rdbms: $rdbms (Must be either 'Oracle' or 'MySQL').", static::$config[$nameConnection]);
         return new Query($db, static::$config[$nameConnection]);
     }
 

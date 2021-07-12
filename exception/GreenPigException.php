@@ -30,7 +30,7 @@ class GreenPigException extends Exception
         $pathFile = str_replace($rootDir, '', $pathFile);
         $nLine = $this->getLine();
         $classException = get_called_class();
-        return "Исключение $classException ($pathFile:$nLine)";
+        return "Exception $classException ($pathFile:$nLine)";
     }
 
 
@@ -59,8 +59,8 @@ class GreenPigException extends Exception
     {
         $errorData = $this->getErrorData();
         $debugData = $this->parametersForDebug;
-        $debugData[] = ['Значение объекта ошибки:', $errorData['errorObject']];
-        $debugData[] = ['Трассировка ошибок:', $errorData['trace']];
+        $debugData[] = ['Error object value:', $errorData['errorObject']];
+        $debugData[] = ['Error tracing:', $errorData['trace']];
         echo  <<<HTML
 <style type="text/css">
     .gp-debug-exception-background-image {

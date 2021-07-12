@@ -52,20 +52,20 @@ class BaseFun
     */
     public static function getSettings($settings, $pathSettings,  $isFormattingVal = true, $isException = true)
     {
-        if (!is_array($settings)) throw new GreenPigException("Настройки должны быть описаны в массиве.", $settings);
+        if (!is_array($settings)) throw new GreenPigException("Settings must be described in an array.", $settings);
         $arrPathSettings = explode('/', $pathSettings);
         $val = self::arrKeyTrimLower($settings);
         foreach ($arrPathSettings as $keySettings) {
             $keySettings = self::trimLower($keySettings);
             if (!isset($val[$keySettings])) {
-                if ($isException) throw new GreenPigException("В конфигурации отсутствует настройка $pathSettings", $settings);
+                if ($isException) throw new GreenPigException("There is no setting in the configuration $pathSettings", $settings);
                 else return null;
             }
             $val = $val[$keySettings];
         }
         if ($isFormattingVal) {
             if (!is_string($val)) {
-                if ($isException) throw new GreenPigException("Неправильные настройки $pathSettings, конечное значение должно быть строкой", $settings);
+                if ($isException) throw new GreenPigException("Incorrect settings $pathSettings, the final value must be a string.", $settings);
                 else return null;
             } else return self::trimLower($val);
         }

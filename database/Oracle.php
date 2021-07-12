@@ -33,7 +33,7 @@ class Oracle extends DB
                 throw new GreenPigDatabaseException($error['message'], $error, null, null, null, $options);
             }
         } else {
-            throw new GreenPigDatabaseException('Не переданы нужные для подключения к базе Oracle параметры.', $options);
+            throw new GreenPigDatabaseException('The parameters required to connect to the Oracle database were not passed.', $options);
         }
         parent::__construct($nameConnection, $options);
     }

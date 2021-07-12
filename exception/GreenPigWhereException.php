@@ -8,7 +8,7 @@ class GreenPigWhereException extends GreenPigException
     public function __construct($message, $errorObject, $where)
     {
         $this->parametersForDebug = [
-          ['Логическое выражение where:', $where]
+          ['Where:', $where]
         ];
         parent::__construct($message, $errorObject);
     }

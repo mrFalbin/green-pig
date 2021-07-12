@@ -51,7 +51,7 @@ class Where
     public function where($where, $beginKeyword, $numberAlias)
     {
         $this->where = $where;
-        if (!is_array($where)) throw new GreenPigWhereException('Неверно составлено логическое выражение.', $where, $this->where);
+        if (!is_array($where)) throw new GreenPigWhereException('Boolean expression is incorrectly composed.', $where, $this->where);
         $this->binds = [];
         $this->numberAlias = $numberAlias;
         $where = $this->formattingWhere($where);
@@ -119,7 +119,7 @@ class Where
      */
     private function identifyType($element)
     {
-        if (!is_array($element)) throw new GreenPigWhereException('Неверно составлено логическое выражение.', $element, $this->where);
+        if (!is_array($element)) throw new GreenPigWhereException('Boolean expression is incorrectly composed.', $element, $this->where);
         if ($this->validLogicalExpression($element)) return 'expression';
         $LogOp = $this->validLogicalOperation($element);
         if ($LogOp['scenario'] == -1) throw new GreenPigWhereException($LogOp['txtError'], $LogOp['objError'], $this->where);
@@ -137,7 +137,7 @@ class Where
      */
     private function validLogicalExpression($arr)
     {
-        if (count($arr) === 0) throw new GreenPigWhereException('Неверно составлено логическое выражение.', $arr, $this->where);
+        if (count($arr) === 0) throw new GreenPigWhereException('Boolean expression is incorrectly composed.', $arr, $this->where);
         if (count($arr) === 1) {
             if (is_array($arr[0])) return true;
             else return false;
@@ -217,14 +217,13 @@ class Where
      */
     private function validLogicalOperation($arr)
     {
-        if (!is_array($arr)) return $this->returnErrorVLO('Логическая операция должна описываться массивом.', $arr);
+        if (!is_array($arr)) return $this->returnErrorVLO('Logical operation must be described by an array.', $arr);
         if ((count($arr) < 2) || (count($arr) > 4)) {
-            return $this->returnErrorVLO('Неверно составлена логическая операция. Размер параметра'
-                . ' arr (лог. операция) минимум 2, максимум 4.', $arr);
+            return $this->returnErrorVLO("Logical operation is incorrectly composed. Parameter size 'arr' minimum 2, maximum 4.", $arr);
         }
         if(!$this->isElArrStr($arr, 0)) {
-            return $this->returnErrorVLO('Всегда должен существовать элемент массива с индексом 0 (название'
-                . ' колонки у логической операции) и он должен быть строкой.', $arr);
+            return $this->returnErrorVLO('There must always be an array element with index 0 (the name of the '
+                                              . 'column of a logical operation) and it must be a string.', $arr);
         }
         // Если длинна логической операции равна 2, это значит что второй элемент всегда имеет строковый или числовой тип и у него
         // ключ должен быть следующим: like, notLike, flex, notFlex, fullFlex.
@@ -234,9 +233,9 @@ class Where
             if ($this->isElArrStrOrNumber($arr, 'flex'))     return $this->returnVLO(1, 'flex');
             if ($this->isElArrStrOrNumber($arr, 'notflex'))  return $this->returnVLO(1, 'notflex');
             if ($this->isElArrStrOrNumber($arr, 'fullflex')) return $this->returnVLO(1, 'fullflex');
-            return $this->returnErrorVLO('Если логическая операция состоит из 2 элементов, то второй'
-                . ' элемент всегда имеет строковый или числовой тип и у него ключ должен быть следующим:'
-                . ' like, notLike, flex, notFlex или fullFlex.', $arr);
+            return $this->returnErrorVLO('If a logical operation consists of 2 elements, then the second element '
+                                                  . 'always has a string or numeric type and its key must be as follows: '
+                                                  . 'like, notLike, flex, notFlex, fullFlex.', $arr);
         }
         // Если длинна логической операции равна 3:
         //   а) Всегда существует элемент с индексом '1' и у него строковой тип.
@@ -247,34 +246,34 @@ class Where
         //       - Если существует элемент с ключем 'sql', то значение у него всегда строковое.
         if (count($arr) == 3) {
             if(!$this->isElArrStr($arr, 1)) {
-                return $this->returnErrorVLO('Второй элемент логической операции (знак сравнения)'
-                    . ' должен быть строкой.', $arr);
+                return $this->returnErrorVLO('The second element of the logical operation (comparison sign) must be a string.', $arr);
             }
             if (isset($arr[2])) {
                 if (is_array($arr[2])) {
                     if (!($arr[1] == 'in' || $arr[1] == 'not in')) {
-                        return $this->returnErrorVLO('Если третий элемент в логической операции – массив,'
-                            . ' значит второй (знак сравнения) может принимать только значения in или not in.', $arr);
+                        return $this->returnErrorVLO("If the third element in a logical operation is an array, ".
+                            "then the second (comparison sign) can only take the values 'in' or 'not in'.", $arr);
                     }
                     elseif (count($arr[2])) return $this->returnVLO(2, 'in');
-                    else return $this->returnErrorVLO('Неверно составлена логическая операция.', $arr);
+                    else return $this->returnErrorVLO('Logical operation is incorrectly composed.', $arr);
                 }
                 if (is_object($arr[2])) {
                     if (BaseFun::isClass($arr[2], 'DateTime')) return $this->returnVLO(2, 'date');
-                    else return $this->returnErrorVLO('Третий элемент в логической операции может быть только'
-                        .' числом, строкой, массивом или экземпляром класса DateTime.', $arr);
+                    else return $this->returnErrorVLO("The third element in a boolean operation can only be a ".
+                        "number, string, array, or an instance of the 'DateTime' class.", $arr);
                 }
                 if (is_string($arr[2]) || is_int($arr[2]) || is_float($arr[2])) {
                     if ($arr[1] == 'between' || $arr[1] == 'not between') {
-                        return $this->returnErrorVLO('Для логической операции с ключевым словом between необходимо четыре параметра.', $arr);
+                        return $this->returnErrorVLO("For a boolean operation with the 'between' keyword, four ".
+                            "parameters are required.", $arr);
                     }
                     return $this->returnVLO(2, 'standard');
                 }
-                return $this->returnErrorVLO('Неверно составлена логическая операция.', $arr);
+                return $this->returnErrorVLO('Logical operation is incorrectly composed.', $arr);
             }
             if ($this->isElArrStr($arr, 'sql')) return $this->returnVLO(2, 'sql');
             elseif ($this->isElArrStrOrArr($arr, 'date')) return $this->returnVLO(2, 'dateStr');
-            return $this->returnErrorVLO('Неверно составлена логическая операция.', $arr);
+            return $this->returnErrorVLO('Logical operation is incorrectly composed.', $arr);
         }
         // Если длинна логической операции равна 4:
         //   а) Должны существовать элементы с индексами 1, 2 и 3, причем элемент с индексом '1' может принимать только
@@ -283,12 +282,11 @@ class Where
         //   в) Должны быть строковые элементы с индексами 'date1' и 'date2'
         if (count($arr) == 4) {
             if (!$this->isElArrStr($arr, 1)) {
-                return $this->returnErrorVLO('Второй элемент логической операции (знак сравнения)'
-                    .' должен быть строкой.', $arr);
+                return $this->returnErrorVLO('The second element of the logical operation (comparison sign) must be a string.', $arr);
             }
             if ($arr[1] != 'between' && $arr[1] != 'not between') {
-                return $this->returnErrorVLO("Второй элемент логической операции (знак сравнения) может"
-                    ." принимать только такие значения: 'between' или 'not between'.", $arr);
+                return $this->returnErrorVLO("The second element of the logical operation (comparison sign) can ".
+                    "only take the following values: 'between' or 'not between'.", $arr);
             }
             if (isset($arr[2]) && isset($arr[3])) {
                 if (((is_string($arr[2]) && preg_match('/^[\d\.\,\-]+$/', $arr[2])) || is_int($arr[2]) || is_float($arr[2])) &&
@@ -298,14 +296,14 @@ class Where
                 if (BaseFun::isClass($arr[2], 'DateTime') &&  BaseFun::isClass($arr[3], 'DateTime')) {
                     return $this->returnVLO(3, 'date');
                 }
-                return $this->returnErrorVLO('Третий и четвертый элемент логической операции должны'
-                    . ' быть одновременно либо числовыми/строковыми, либо с типом DateTime', $arr);
+                return $this->returnErrorVLO("The third and fourth elements of a boolean operation must be ".
+                    "either numeric/string or DateTime at the same time.", $arr);
             }
             if ($this->isElArrStrOrArr($arr, 'date1') && $this->isElArrStrOrArr($arr, 'date2')) {
                 return $this->returnVLO(3, 'dateStr');
             }
         }
-        return $this->returnErrorVLO('Неверно составлена логическая операция.', $arr);
+        return $this->returnErrorVLO('Logical operation is incorrectly composed.', $arr);
     }
 
 
@@ -357,7 +355,7 @@ class Where
                 $alias = $this->genAliasAndSetBind(BaseFun::repStar($logOperation['notlike']));
                 $logOp = [$logOperation[0], 'not like', 'sql' => ":$alias"];
             }
-            else throw new GreenPigWhereException('ОШИБКА в логической операции.', $logOperation, $this->where);
+            else throw new GreenPigWhereException('ERROR in logical operation.', $logOperation, $this->where);
         }
         elseif ($typeLogOp['scenario'] == 2) {
             if ($typeLogOp['action'] == 'standard') {
@@ -388,7 +386,7 @@ class Where
                 $logOp = [$logOperation[0], $logOperation[1], 'sql' => "($aliases)"];
             }
             elseif ($typeLogOp['action'] == 'sql') $logOp = $logOperation;
-            else throw new GreenPigWhereException('ОШИБКА в логической операции.', $logOperation, $this->where);
+            else throw new GreenPigWhereException('ERROR in logical operation.', $logOperation, $this->where);
         }
         elseif ($typeLogOp['scenario'] == 3) {
             if ($typeLogOp['action'] == 'number') {
@@ -419,10 +417,10 @@ class Where
                 $sql = $this->strToDate($alias1, $format1) .' and '. $this->strToDate($alias2, $format2);
                 $logOp = [$logOperation[0], $logOperation[1], 'sql' => $sql];
             }
-            else throw new GreenPigWhereException('ОШИБКА в логической операции.', $logOperation, $this->where);
+            else throw new GreenPigWhereException('ERROR in logical operation.', $logOperation, $this->where);
         }
-        else throw new GreenPigWhereException('ОШИБКА в логической операции.', $logOperation);
-        if (!(isset($logOp[0]) && isset($logOp[1]) && isset($logOp['sql']))) throw new GreenPigWhereException('ОШИБКА в логической операции.', $logOperation, $this->where);
+        else throw new GreenPigWhereException('ERROR in logical operation.', $logOperation);
+        if (!(isset($logOp[0]) && isset($logOp[1]) && isset($logOp['sql']))) throw new GreenPigWhereException('ERROR in logical operation.', $logOperation, $this->where);
         return " {$logOp[0]} {$logOp[1]} {$logOp['sql']} ";
     }
 

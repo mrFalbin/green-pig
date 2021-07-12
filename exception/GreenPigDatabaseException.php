@@ -11,7 +11,7 @@ class GreenPigDatabaseException extends GreenPigException
         if ($sql)  $this->parametersForDebug[] = ['sql:', $sql];
         if ($bind)  $this->parametersForDebug[] = ['binds:', $bind];
         if ($sqlWithVal)  $this->parametersForDebug[] = ['sql with val:', $sqlWithVal];
-        if ($options)  $this->parametersForDebug[] = ['Настройки подключения:', $options];
+        if ($options)  $this->parametersForDebug[] = ['Connection settings:', $options];
         parent::__construct($message, $errorObject);
     }
 }

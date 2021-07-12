@@ -206,8 +206,8 @@ class Query
     {
         $this->startDI();
         $countRow = $this->_count('*');
-        if ($countRow > 1) throw new GreenPigQueryException('В выборке больше одной строчки!', null, [
-            ['Колличество строк в выборке:', $countRow],
+        if ($countRow > 1) throw new GreenPigQueryException('The response from the database contains more than one line!', null, [
+            ['Number of rows in the sample:', $countRow],
             ['sql:', $this->baseSQL]
         ]);
         $result = $this->_first($nameColumn);
@@ -378,7 +378,7 @@ class Query
 
     private function getPkAtCurrentLevel($option)
     {
-        if (empty($option['pk'])) throw new GreenPigQueryException('В массиве option на каждом уровне вложенности обязательно должен быть ключь pk', $option);
+        if (empty($option['pk'])) throw new GreenPigQueryException('In the option array, at each nesting level, there must be a pk key.', $option);
         return $option['pk'];
     }
 
@@ -386,7 +386,7 @@ class Query
     private function validOptionsForAll($options)
     {
         if (!empty($options)) {
-            if (!is_array($options)) throw new GreenPigQueryException('options должен быть массивом', $options);
+            if (!is_array($options)) throw new GreenPigQueryException('Options must be an array.', $options);
             $options = BaseFun::arrKeyTrimLower($options);
             $options = BaseFun::arrValTrimLower($options);
             $this->isValidPkForOptions($options);
@@ -536,10 +536,10 @@ class Query
             // --- проверяем $this->sort на валидность и приводим его в пристойный вид  ---
             if (is_string($this->sort)) $sort = [$this->sort];
             elseif (is_array($this->sort)) $sort = $this->sort;
-            else throw new GreenPigQueryException('Ошибочный формат переменной sort', $this->sort);
+            else throw new GreenPigQueryException('Wrong variable format sort.', $this->sort);
             $sort = BaseFun::arrValTrimLower($sort);
             foreach ($sort as $srt) {
-                if (!is_string($srt)) throw new GreenPigQueryException('Ошибочный формат переменной sort', $this->sort);
+                if (!is_string($srt)) throw new GreenPigQueryException('Wrong variable format sort.', $this->sort);
             }
             // ---
             // в случае агрегации в сортировке могут учавствовать только колонки указанные в $options на верхнем уровне
@@ -906,7 +906,7 @@ class Query
             if (!empty($table)) $result = $this->db->insert($sql, $this->binds, $table, $primaryKey);
             else $result = $this->db->insert($sql, $this->binds);
         }
-        else throw new GreenPigQueryException('Ошибочный формат переменной typeSelect', $typeSelect);
+        else throw new GreenPigQueryException('Wrong variable format typeSelect.', $typeSelect);
         $dbDebugInfo = $this->db->getDebugInfo();
         $this->bufDebugInfo = [];
         if (!empty($dbDebugInfo[0]) && is_array($dbDebugInfo[0])) {
