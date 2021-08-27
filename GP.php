@@ -24,6 +24,7 @@ class GP
             // Если нет - выбрасывается исключение.
             if (empty(static::$config['default'])) BaseFun::getSettings($options, 'default', false);
             foreach ($options as $nameConect => $arrSettings) {
+                $nameConect = BaseFun::trimLower($nameConect);
                 // Если настройки db отсутствуют - будет брошено исключение
                 BaseFun::getSettings($arrSettings, 'db', false);
                 $arrSettings = self::setDefaultParameters($arrSettings);
@@ -48,13 +49,22 @@ class GP
             ];
         }
         // ---------- Дефолтные значения для дебага ----------
-        if (BaseFun::getSettings($options, 'debug', false, false) == null) {
-            $options['debug'] = [
-                'isdebug' => true,
-                'maxnumberquery' => 100
-            ];
+        $debugQuery = BaseFun::getSettings($options, 'debugquery', false, false);
+        if ($debugQuery === null) $options['debugquery'] = 100;
+        else {
+            if (is_int($debugQuery) && $debugQuery >= 0) $options['debugquery'] = $debugQuery;
+            else throw new GreenPigException("Invalid parameter numberQuery, it must be an integer (numberQuery >= 0).", $debugQuery);
         }
         return $options;
+    }
+
+
+    public static function configDebugQuery($numberQuery, $nameConnection = 'default')
+    {
+        $nameConnection = BaseFun::trimLower($nameConnection);
+        if (empty(static::$config[$nameConnection])) throw new GreenPigException("Invalid connection name: $nameConnection", static::$config);
+        if (is_int($numberQuery) && $numberQuery >= 0) static::$config[$nameConnection]['debugquery'] = $numberQuery;
+        else throw new GreenPigException("Invalid parameter numberQuery, it must be an integer (numberQuery >= 0).", $numberQuery);
     }
 
 

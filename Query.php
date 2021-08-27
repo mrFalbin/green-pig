@@ -618,7 +618,7 @@ class Query
         foreach ($options as $key => $val) {
             if (is_array($val)) $optionsOldLogics[$key] = $this->convertOptionsToOldLogics($val);
             else {
-                if ($key == 'pk') $optionsOldLogics[$val] = 'pk';
+                if ($key === 'pk') $optionsOldLogics[$val] = 'pk';
                 else $optionsOldLogics[$val] = $val;
             }
         }
@@ -628,7 +628,7 @@ class Query
     private function _getPrimaryKeyForAggregator($option) {
         $pk = [];
         foreach ($option as $nameColumn => $alias) {
-            if (is_string($alias) && mb_strtolower(trim($alias)) == 'pk') $pk[] = $nameColumn;
+            if (is_string($alias) && mb_strtolower(trim($alias)) === 'pk') $pk[] = $nameColumn;
         }
         if (count($pk) > 1) throw new \Exception('В массиве option на каждом уровне вложенности pk должен быть ТОЛЬКО ОДИН.');
         if (count($pk) === 0) throw new \Exception('В массиве option на каждом уровне вложенности ДОЛЖЕН быть pk.');
@@ -739,16 +739,17 @@ class Query
         $sqlWhere = $wh->where($where, 'WHERE', $this->getNewNumberAlias());
         $this->getNewNumberAlias($wh->numberAlias);
         $this->addBinds($wh->getBinds());
-        $sql = "SELECT * FROM $table $sqlWhere";
-        $dataBeforeChange = $this->_execute($sql, 'all');
+        $sql = "SELECT count(*) count_update FROM $table $sqlWhere";
+        $countChange = $this->_execute($sql, 'first');
+        $countChange = (int)BaseFun::arrKeyTrimLower($countChange)['count_update'];
         $sqlData = $this->decomposedParameters($parameters);
         $sql = "UPDATE $table SET {$sqlData['update']} $sqlWhere";
         $this->addBinds($sqlData['bind']);
         $this->_execute($sql, 'execute');
         $this->endDI();
         $this->clearThisObject();
-        $this->rawData = $dataBeforeChange;
-        return $dataBeforeChange;
+        $this->rawData = $countChange;
+        return $countChange;
     }
 
 
@@ -787,18 +788,22 @@ class Query
     public function delete($table, $where)
     {
         $this->startDI();
-        $wh = new Where($this->settings);
-        $sqlWhere = $wh->where($where, 'WHERE', $this->getNewNumberAlias());
-        $this->getNewNumberAlias($wh->numberAlias);
-        $this->addBinds($wh->getBinds());
-        $sql = "SELECT * FROM $table $sqlWhere";
-        $dataBeforeDelete = $this->_execute($sql, 'all');
+        if ($where === true) $sqlWhere = '';
+        else {
+            $wh = new Where($this->settings);
+            $sqlWhere = $wh->where($where, 'WHERE', $this->getNewNumberAlias());
+            $this->getNewNumberAlias($wh->numberAlias);
+            $this->addBinds($wh->getBinds());
+        }
+        $sql = "SELECT count(*) count_delete FROM $table $sqlWhere";
+        $countDelete = $this->_execute($sql, 'first');
+        $countDelete = (int)BaseFun::arrKeyTrimLower($countDelete)['count_delete'];
         $sql = "DELETE FROM $table $sqlWhere";
         $this->_execute($sql, 'execute');
         $this->endDI();
         $this->clearThisObject();
-        $this->rawData = $dataBeforeDelete;
-        return $dataBeforeDelete;
+        $this->rawData = $countDelete;
+        return $countDelete;
     }
 
 
@@ -849,7 +854,7 @@ class Query
     public function column($nameColumn)
     {
         $rawData = $this->rawData;
-        if ($rawData && count($rawData)) {
+        if (is_array($rawData) && count($rawData)) {
             if (is_array($rawData[0])) {
                 $result = [];
                 foreach ($rawData as $el) $result[] = $el[$nameColumn];
@@ -863,27 +868,30 @@ class Query
     public function map($pk, $columns = [])
     {
         $rawData = $this->rawData;
-        $result = [];
-        if ($columns) {
-            foreach ($rawData as $el) {
-                $buf = [];
-                foreach ($columns as $c) {
-                    $buf[$c] = $el[$c];
+        if (is_array($rawData) && count($rawData)) {
+            $result = [];
+            if ($columns) {
+                foreach ($rawData as $el) {
+                    $buf = [];
+                    foreach ($columns as $c) {
+                        $buf[$c] = $el[$c];
+                    }
+                    $result[$el[$pk]] = $buf;
                 }
-                $result[$el[$pk]] = $buf;
+            } else {
+                foreach ($rawData as $el) {
+                    $result[$el[$pk]] = $el;
+                }
             }
-        } else {
-            foreach ($rawData as $el) {
-                $result[$el[$pk]] = $el;
-            }
+            return $result;
         }
-        return $result;
+        return false;
     }
 
 
     public function debugInfo()
     {
-        $isDebug = BaseFun::getSettings($this->settings, 'debug/isdebug', false);
+        $isDebug = BaseFun::getSettings($this->settings, 'debugquery', false);
         $result = 'Debug is disabled in the settings.';
         if ($isDebug) $result = $this->debugInfo;
         return $result;
@@ -942,11 +950,11 @@ class Query
 
     private function endDI()
     {
-        $isDebug = BaseFun::getSettings($this->settings, 'debug/isdebug', false);
+        $isDebug = BaseFun::getSettings($this->settings, 'debugquery', false);
         if ($isDebug) {
             if (count($this->debugInfo) > 0) $numberQuery = $this->debugInfo[count($this->debugInfo) - 1]['numberQuery'] + 1;
             else $numberQuery = 1;
-            $maxNumberQuery = (int)BaseFun::getSettings($this->settings, 'debug/maxnumberquery', false);
+            $maxNumberQuery = (int)BaseFun::getSettings($this->settings, 'debugquery', false);
             while (count($this->debugInfo) >= $maxNumberQuery) array_shift($this->debugInfo);
             $this->debugInfo[] = [
                 'numberQuery' => $numberQuery,

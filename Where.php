@@ -51,7 +51,7 @@ class Where
     public function where($where, $beginKeyword, $numberAlias)
     {
         $this->where = $where;
-        if (!is_array($where)) throw new GreenPigWhereException('Boolean expression is incorrectly composed.', $where, $this->where);
+        if (!is_array($where)) throw new GreenPigWhereException('Expression is incorrectly composed.', $where, $this->where);
         $this->binds = [];
         $this->numberAlias = $numberAlias;
         $where = $this->formattingWhere($where);

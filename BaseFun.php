@@ -46,8 +46,7 @@ class BaseFun
     * ]
     * $pathSettings - путь к нужной настройке, где ключи массива настроек записаны через '/' ПР: 'db/rdms'
     * $isFormattingVal - (true/false) если true, то форматируем результат (удаляем лишние пробелы, приводим к нижнему регистру)
-    * $isException - (true/false) если true, то в случае отсутсвия искомой настройки выбрасывается исключение,
-    * если false - возвращается null
+    * $isException - (true/false) если true, то в случае отсутсвия искомой настройки выбрасывается исключение, если false - возвращается null
     * ПР: getSettings($settings, 'db/rdms') === 'oracle'
     */
     public static function getSettings($settings, $pathSettings,  $isFormattingVal = true, $isException = true)
