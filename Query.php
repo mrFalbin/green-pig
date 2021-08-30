@@ -167,6 +167,7 @@ class Query
 
     public function where($alias, $where, $beginKeyword = 'where')
     {
+        if (is_int($where)) $where = ['id', '=', $where];
         $wh = new Where($this->settings);
         $this->sqlPart($alias, $wh->where($where, $beginKeyword, $this->getNewNumberAlias()));
         $this->addBinds($wh->getBinds());
@@ -175,7 +176,108 @@ class Query
     }
 
 
-//    public function whereWithJoin($aliasJoin, $options, $aliasWhere, $where, $beginKeyword = 'where') {}
+    // ---------- whereJoin ----------
+    public function whereJoin($aliasJoin, $nameTable, $aliasTable, $conditionJoin, $aliasWhere, $where, $beginKeywordWhere = 'where')
+    {
+        $aliasTable = BaseFun::trimLower($aliasTable);
+        $conditionJoin = BaseFun::trimLower($conditionJoin);
+        $obWh = new Where($this->settings);
+        if ($obWh->validLogicalOperation($where)['scenario'] !== -1) $where = [$where];
+        $sqlJoin = $this->genJoinEditWhere($where, $aliasTable, $nameTable, $conditionJoin);
+        if (trim($sqlJoin)) $this->sqlPart($aliasJoin, $sqlJoin);
+        $this->sqlPart($aliasWhere, $obWh->where($where, $beginKeywordWhere, $this->getNewNumberAlias()));
+        $this->addBinds($obWh->getBinds());
+        $this->numberAlias = $obWh->numberAlias;
+        return $this;
+    }
+
+
+    private function genJoinEditWhere(&$arrWhere, $userAliasTable, $nameTable, $conditionJoin) {
+        $where = new Where($this->settings);
+        $aliasTable = 'greenpig_alias_join_table_' . $this->getNewNumberAlias();
+        $sqlJoin = '';
+        $isRepAliasInWhere = false;
+        foreach ($arrWhere as &$wh) {
+            // 0 индекс логического выражения может быть 'or' или 'and', поэтому работаем только с массивами.
+            // Валидацию не проводим, она будет позже на этапе построения sql
+            if (is_array($wh)) {
+                if ($where->validLogicalExpression($wh)) $sqlJoin .= $this->genJoinEditWhere($wh, $userAliasTable, $nameTable, $conditionJoin);
+                elseif($where->validLogicalOperation($wh) !== -1) {
+                    $wh[0] = BaseFun::trimLower($wh[0]);
+                    $wh[0] = str_replace("$userAliasTable.", "$aliasTable.", $wh[0], $countRep);
+                    if ($countRep > 0) $isRepAliasInWhere = true;
+                }
+            }
+        }
+        if ($isRepAliasInWhere) {
+            $conditionJoinRepAlias = str_replace("$userAliasTable.", "$aliasTable.", $conditionJoin);
+            $sqlJoin .= " INNER JOIN $nameTable $aliasTable ON $conditionJoinRepAlias ";
+        }
+        return $sqlJoin;
+    }
+    // ---------- end whereJoin ----------
+
+
+    // ---------- whereDetailedSearch (для плагина https://www.npmjs.com/package/detailed-search) ----------
+    public function whereDetailedSearch($aliasWhere, $searchQuery, $beginKeywordWhere = 'where', $aliasJoin = null, $nameTable = null, $aliasTable = null, $conditionJoin = null)
+    {
+        // --- валидация ---
+        if (!(($aliasJoin === null && $nameTable === null  && $aliasTable === null && $conditionJoin === null) ||
+            ($aliasJoin !== null && $nameTable !== null  && $aliasTable !== null && $conditionJoin !== null))) {
+            throw new GreenPigQueryException('All parameters JOIN are empty, or all are filled.', [
+                'aliasJoin' => $aliasJoin, 'nameTable' => $nameTable, 'aliasTable' => $aliasTable, 'conditionJoin' => $conditionJoin
+            ]);
+        }
+        // --- where ---
+        $arrWhere = [];
+        foreach ($searchQuery as $sqBlock) {
+            $arrWhereBlock = ['or'];
+            foreach ($sqBlock as $sqLine) {
+                $arrWhereBlock[] = $this->dsLogicalOperations($sqLine);
+            }
+            $arrWhere[] = $arrWhereBlock;
+        }
+        // ------------
+        if ($aliasJoin !== null) $this->whereJoin($aliasJoin, $nameTable, $aliasTable, $conditionJoin, $aliasWhere, $arrWhere, $beginKeywordWhere);
+        else $this->where($aliasWhere, $arrWhere, $beginKeywordWhere);
+        return $this;
+    }
+
+
+    private function dsLogicalOperations($sqLine)
+    {
+        $type = empty($sqLine['info']['type']) ? $sqLine['type'] : $sqLine['info']['type'];
+        $column = $sqLine['info']['column'];
+        $secondColumns = empty($sqLine['info']['secondColumns']) ? null : $sqLine['info']['secondColumns'];
+        // --- генерируем основную часть where ---
+        if ($type == 'text') {
+            if (isset($sqLine['exclude'])) $whereLine = [$column, 'notFlex' => $sqLine['exclude']];
+            else $whereLine = [$column, 'flex' => $sqLine['value']];
+        } else {
+            if (isset($sqLine['exclude'])) $whereLine = [$column, '<>', $sqLine['exclude']];
+            else if (isset($sqLine['value'])) $whereLine = [$column, '=', $sqLine['value']];
+            else if (isset($sqLine['start']) && isset($sqLine['end'])) {
+                if ($type === 'number') $whereLine = [$column, 'between', (int)$sqLine['start'], (int)$sqLine['end']];
+                else if ($type === 'date') $whereLine = [$column, 'between', 'date1' => $sqLine['start'], 'date2' => $sqLine['end']];
+            } else {
+                if (isset($sqLine['start'])) {
+                    if ($type === 'number') $whereLine = [$column, '>=', (int)$sqLine['start']];
+                    else if ($type === 'date') $whereLine = [$column, '>=', 'date' => $sqLine['start']];
+                } else if (isset($sqLine['end'])) {
+                    if ($type === 'number') $whereLine = [$column, '<=', (int)$sqLine['end']];
+                    else if ($type === 'date') $whereLine = [$column, '<=', 'date' => $sqLine['end']];
+                }
+            }
+        }
+        // -----
+        if (is_array($secondColumns)) {
+            // $secondColumns: ключ массива - название колонки, значение массива - значение ячейки
+            $whereLine = [$whereLine];
+            foreach ($secondColumns as $cl => $val) {$whereLine[] = [$cl, '=', $val];}
+        }
+        return $whereLine;
+    }
+    // ---------- end whereDetailedSearch ----------
 
 
     public function sort($nameColumn)

@@ -135,7 +135,7 @@ class Where
      *                 ПР: ['and/or', [...], [...], ... ]
      *              б) Все элементы - массив.   ПР: [[...], ... ]
      */
-    private function validLogicalExpression($arr)
+    public function validLogicalExpression($arr)
     {
         if (count($arr) === 0) throw new GreenPigWhereException('Boolean expression is incorrectly composed.', $arr, $this->where);
         if (count($arr) === 1) {
@@ -215,7 +215,7 @@ class Where
      *    txtError => текст ошибки (если не было ошибки - отсутствует)
      * ]
      */
-    private function validLogicalOperation($arr)
+    public function validLogicalOperation($arr)
     {
         if (!is_array($arr)) return $this->returnErrorVLO('Logical operation must be described by an array.', $arr);
         if ((count($arr) < 2) || (count($arr) > 4)) {
