@@ -829,9 +829,14 @@ class Query
     }
 
 
-
-//    public function inserts($table, $parameters) { }
-
+    //todo: Тупая реализация, нужно переделать
+    public function inserts($table, $parameters) {
+        foreach ($parameters as $param) {
+            $this->insert($table, $param);
+        }
+        $this->rawData = count($parameters);
+        return count($parameters);
+    }
 
 
     public function update($table, $parameters, $where)
@@ -853,7 +858,6 @@ class Query
         $this->rawData = $countChange;
         return $countChange;
     }
-
 
 
     // Если значение не массив, то биндим через параметры, если массив то вставляем в sql как есть
@@ -886,7 +890,6 @@ class Query
     }
 
 
-
     public function delete($table, $where)
     {
         $this->startDI();
@@ -909,7 +912,6 @@ class Query
     }
 
 
-
     public function beginTransaction()
     {
         $this->db->beginTransaction();
@@ -917,13 +919,11 @@ class Query
     }
 
 
-
     public function commit()
     {
         $this->db->commit();
         return $this;
     }
-
 
 
     public function rollBack()
@@ -935,6 +935,7 @@ class Query
 
 
     // --------------------------------------------- синяя группа ------------------------------------------------------
+
 
 
     public function getData($formatting = false)
