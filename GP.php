@@ -11,6 +11,11 @@ use GreenPig\Exception\GreenPigException;
 class GP
 {
     private static $config = [];
+    // --- log ---
+    const LOG_INFO = 'info';
+    const LOG_DEBUG = 'debug';
+    const LOG_WARNING = 'warning';
+    const LOG_ERROR = 'error';
 
 
     public static function config($options)
@@ -79,6 +84,14 @@ class GP
     }
 
 
+    public static function configLog($isWrite, $nameConnection = 'default')
+    {
+        $nameConnection = BaseFun::trimLower($nameConnection);
+        if (empty(static::$config[$nameConnection])) throw new GreenPigException("Invalid connection name: $nameConnection", static::$config);
+        static::$config[$nameConnection]['log']['iswrite'] = $isWrite;
+    }
+
+
     public static function instance($nameConnection = 'default')
     {
         if (empty(static::$config[$nameConnection])) throw new GreenPigException("Invalid connection name: $nameConnection", static::$config);
@@ -87,7 +100,7 @@ class GP
         if ($rdbms == 'oracle') $db = Oracle::instance($nameConnection, $dbConfig);
         elseif ($rdbms == 'mysql') $db = MySql::instance($nameConnection, $dbConfig);
         else throw new GreenPigException("Incorrect value rdbms: $rdbms (Must be either 'Oracle' or 'MySQL').", static::$config[$nameConnection]);
-        return new Query($db, static::$config[$nameConnection]);
+        return new Query($db, static::$config[$nameConnection], $nameConnection);
     }
 
 

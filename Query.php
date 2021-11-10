@@ -78,6 +78,7 @@ use GreenPig\Exception\GreenPigQueryException;
 class Query
 {
     private $db;
+    public  $nameConnection;
     private $settings;
     private $baseSQL = '';
     private $partsSql = [];
@@ -87,20 +88,21 @@ class Query
     private $pagination = false;
     private $paginationLastRequest = false;
     private $rawData = '';
-
     private $debugInfo = [];
     private $bufDebugInfo = []; // промежуточный массив, накапливающий инфу о вспомогательных запросах
     private $timeStartQuerys;
-
     private $gpAliasTable = 'greenpig_alias_table_';
     private $gpAliasRownum = 'greenpig_alias_rownum_';
+    // --- log ---
+    public static $logs = [];
 
 
 
-    public function __construct($db, &$settings)
+    public function __construct($db, &$settings, $nameConnection)
     {
         $this->db = $db;
         $this->settings = &$settings;
+        $this->nameConnection = $nameConnection;
     }
 
 
@@ -1078,6 +1080,72 @@ class Query
         $this->sort = '';
         $this->paginationLastRequest = $this->pagination;
         $this->pagination = false;
+    }
+
+
+
+    // -------------------------------------------------- LOG ----------------------------------------------------------
+
+
+
+    public function newLog($type, $title, $message, $fileName = null, $numberLine = null)
+    {
+        $log = new Log($this, $this->settings);
+        $log->writeLog($type, $title, $message, $fileName, $numberLine);
+        return $log;
+    }
+
+
+    /**
+     * @param $nameInstaceLog string
+     * @return \GreenPig\Log
+     */
+    public function log($nameInstaceLog)
+    {
+        return self::$logs[$nameInstaceLog];
+    }
+
+
+    public function clearLog($nameInstaceLog = null)
+    {
+        if (is_string($nameInstaceLog)) {
+            unset(self::$logs[$nameInstaceLog]);
+        } else self::$logs = [];
+        return $this;
+    }
+
+
+    public function sqlFullLog($type, $title)
+    {
+        $log = new Log($this, $this->settings);
+        return $log->sqlFullLog($type, $title);
+    }
+
+
+    public function sqlBasicLog($type, $title)
+    {
+        $log = new Log($this, $this->settings);
+        return $log->sqlBasicLog($type, $title);
+    }
+
+
+    public function createTablesForLog($table = 'all')
+    {
+        $log = new Log($this, $this->settings);
+        $log->createTablesForLog($table);
+    }
+
+
+    public function deleteLog($numberDay, $type, $title)
+    {
+        $log = new Log($this, $this->settings);
+        return $log->deleteLog($numberDay, $type, $title);
+    }
+
+
+    public function getDataLog() {
+        $log = new Log($this, $this->settings);
+        return $log->getDataLog($this->getData('lower'));
     }
 
 }
