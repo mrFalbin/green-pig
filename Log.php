@@ -93,9 +93,18 @@ class Log
     }
 
 
-    public function writeLog($type, $title, $message, $fileName, $numberLine)
+    public function writeLog($type, $title, $message)
     {
         if ($this->isWriteLog()) {
+            $fileName = null;
+            $numberLine = null;
+            $trace = null;
+            $traceBacktrace = debug_backtrace();
+            if (isset($traceBacktrace[1])) $trace = $traceBacktrace[1];
+            if ($trace) {
+                $fileName = str_replace($_SERVER['DOCUMENT_ROOT'], '', $trace['file']);
+                $numberLine = $trace['line'];
+            }
             $this->type = $this->validType($type);
             $this->id = $this->query->insert($this->tLog['nameTable'], [
                 $this->tLog['type'] => $this->type,
