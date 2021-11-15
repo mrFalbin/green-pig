@@ -256,9 +256,13 @@ class Query
             if (isset($sqLine['exclude'])) $whereLine = [$column, 'notFlex' => $sqLine['exclude']];
             else $whereLine = [$column, 'flex' => $sqLine['value']];
         } else {
-            if (isset($sqLine['exclude'])) $whereLine = [$column, '<>', $sqLine['exclude']];
-            else if (isset($sqLine['value'])) $whereLine = [$column, '=', $sqLine['value']];
-            else if (isset($sqLine['start']) && isset($sqLine['end'])) {
+            if (isset($sqLine['exclude'])) {
+                if ($type === 'date') $whereLine = [$column, '<>', 'date' => $sqLine['exclude']];
+                else $whereLine = [$column, '<>', $sqLine['exclude']];
+            } else if (isset($sqLine['value'])) {
+                if ($type === 'date') $whereLine = [$column, '=', 'date' => $sqLine['value']];
+                else $whereLine = [$column, '=', $sqLine['value']];
+            } else if (isset($sqLine['start']) && isset($sqLine['end'])) {
                 if ($type === 'number') $whereLine = [$column, 'between', (int)$sqLine['start'], (int)$sqLine['end']];
                 else if ($type === 'date') $whereLine = [$column, 'between', 'date1' => $sqLine['start'], 'date2' => $sqLine['end']];
             } else {
