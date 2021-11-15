@@ -143,7 +143,7 @@ class GP
     }
 
     public static function varDumpExport($var, $isHighlight = false, $depth = 10) {
-        Debug::varDumpExport($var, $isHighlight, $depth);
+        return Debug::varDumpExport($var, $isHighlight, $depth);
     }
 
 }
