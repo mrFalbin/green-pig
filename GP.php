@@ -5,6 +5,7 @@ namespace GreenPig;
 use GreenPig\Database\DB;
 use GreenPig\Database\MySql;
 use GreenPig\Database\Oracle;
+use GreenPig\Helpers\Debug;
 use GreenPig\Exception\GreenPigException;
 
 
@@ -126,6 +127,23 @@ class GP
     {
         static::$config = [];
         return DB::deleteAllInstances();
+    }
+
+
+    // =================================================================================================================
+    //                                                 HELPERS
+    // =================================================================================================================
+
+    // ----------------------------------------------------- Debug -----------------------------------------------------
+
+    public static function varDump($var, $title = '', $depth = 10) {
+        Debug::$_isGP = true;
+        Debug::varDump($var, $title, $depth);
+        Debug::$_isGP = false;
+    }
+
+    public static function varDumpExport($var, $isHighlight = false, $depth = 10) {
+        Debug::varDumpExport($var, $isHighlight, $depth);
     }
 
 }

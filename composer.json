@@ -27,7 +27,7 @@
             "GreenPig\\": "",
             "GreenPig\\Database\\": "database",
             "GreenPig\\Exception\\": "exception",
-            "GreenPig\\Log\\": "log"
+            "GreenPig\\Helpers\\": "helpers"
         }
     }
 }

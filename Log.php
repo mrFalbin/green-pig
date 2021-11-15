@@ -390,12 +390,11 @@ class Log
      *      .....
      *  ]
      *
-     * @param $arr
+     * @param $arr array (ключи всегда приходят в нижнем регистре)
      * @return array
      */
     public function getDataLog($arr) {
-        // $arr - приходит точно в нижнем регистре
-        // log
+        // ---------- log ----------
         $id = $this->tLog['id'];
         $type = $this->tLog['type'];
         $title = $this->tLog['title'];
@@ -404,7 +403,7 @@ class Log
         $file_name = $this->tLog['file_name'];
         $number_line = $this->tLog['number_line'];
         $date_create = $this->tLog['date_create'];
-        // val_log
+        // ---------- val_log ----------
         $log_id = $this->tValLog['log_id'];
         $parent_id = $this->tValLog['parent_id'];
         $property = $this->tValLog['property'];
