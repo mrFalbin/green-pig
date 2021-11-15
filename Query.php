@@ -837,6 +837,7 @@ class Query
 
     //todo: Тупая реализация, нужно переделать
     public function inserts($table, $parameters) {
+        // startDI нет, т.к. дергается insert в котором это есть
         foreach ($parameters as $param) {
             $this->insert($table, $param);
         }
@@ -1015,23 +1016,41 @@ class Query
     private function _execute($sql, $typeSelect, $table = null, $primaryKey = null)
     {
         $sql = $this->genSqlPart($sql);
+        $binds = $this->getActualBinds($sql, $this->binds);
         $result = [];
-        if ($typeSelect == 'first') $result = $this->db->first($sql, $this->binds);
-        elseif ($typeSelect == 'all') $result = $this->db->all($sql, $this->binds);
-        elseif ($typeSelect == 'execute') $result = $this->db->execute($sql, $this->binds);
+        if ($typeSelect == 'first') $result = $this->db->first($sql, $binds);
+        elseif ($typeSelect == 'all') $result = $this->db->all($sql, $binds);
+        elseif ($typeSelect == 'execute') $result = $this->db->execute($sql, $binds);
         elseif ($typeSelect == 'insert') {
-            if (!empty($table)) $result = $this->db->insert($sql, $this->binds, $table, $primaryKey);
-            else $result = $this->db->insert($sql, $this->binds);
+            if (!empty($table)) $result = $this->db->insert($sql, $binds, $table, $primaryKey);
+            else $result = $this->db->insert($sql, $binds);
         }
         else throw new GreenPigQueryException('Wrong variable format typeSelect.', $typeSelect);
         $dbDebugInfo = $this->db->getDebugInfo();
-        $this->bufDebugInfo = [];
+        if (count($this->bufDebugInfo) > 1000) $this->bufDebugInfo = [];
         if (!empty($dbDebugInfo[0]) && is_array($dbDebugInfo[0])) {
             foreach ($dbDebugInfo as $di) {
                 $this->bufDebugInfo[] = $di;
             }
         } else $this->bufDebugInfo[] = $dbDebugInfo;
         return $result;
+    }
+
+
+    // Если в массиве биндов значений больше чем нужно, то игнорируем лишние. Эта функция позволила решить проблему
+    // с функцией update(), когда у нас есть ручные бинды как для where части, так и для update части.
+    private function getActualBinds($sql, $binds)
+    {
+        $actualBinds = [];
+        foreach ($binds as $k => $v) {
+            $nameBind = trim(str_replace(":", "", $k));
+            // Получаем все, что записано между квадратными скобками в бинде
+            preg_match_all("/\[(\w|\s)+\]/", $nameBind, $bindOptions);
+            $bindOptions = isset($bindOptions[0][0]) ? $bindOptions[0][0] : null;
+            $name = ':' . trim(str_replace($bindOptions, "", $nameBind));
+            if (strpos($sql, $name) !== false) $actualBinds[$k] = $v;
+        }
+        return $actualBinds;
     }
 
 
@@ -1070,8 +1089,8 @@ class Query
                 'querys' => $this->bufDebugInfo,
                 'allTime' => (microtime(true) - $this->timeStartQuerys)
             ];
-            $this->bufDebugInfo = [];
         }
+        $this->bufDebugInfo = [];
     }
 
 
