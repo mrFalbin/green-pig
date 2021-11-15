@@ -169,12 +169,28 @@ class Query
 
     public function where($alias, $where, $beginKeyword = 'where')
     {
-        if (is_int($where)) $where = ['id', '=', $where];
+        $where = $this->preprocessorWhere($where);
         $wh = new Where($this->settings);
         $this->sqlPart($alias, $wh->where($where, $beginKeyword, $this->getNewNumberAlias()));
         $this->addBinds($wh->getBinds());
         $this->numberAlias = $wh->numberAlias;
         return $this;
+    }
+
+
+    private function preprocessorWhere($where)
+    {
+        if (is_array($where) && count($where)) {
+            $isArrId = true;
+            foreach ($where as $k => $v) {
+                if (!is_int($k) || !is_int($v)) $isArrId = false;
+            }
+            if ($isArrId) {
+                $where = ['id', 'in', $where];
+            }
+        }
+        elseif (is_int($where)) $where = ['id', '=', $where];
+        return $where;
     }
 
 
@@ -849,6 +865,8 @@ class Query
     public function update($table, $parameters, $where)
     {
         $this->startDI();
+        $where = $this->preprocessorWhere($where);
+        if (!(is_array($where) && count($where))) throw new GreenPigQueryException('Where expression is incorrectly composed.', $where);
         $wh = new Where($this->settings);
         $sqlWhere = $wh->where($where, 'WHERE', $this->getNewNumberAlias());
         $this->getNewNumberAlias($wh->numberAlias);
@@ -900,13 +918,14 @@ class Query
     public function delete($table, $where)
     {
         $this->startDI();
-        if ($where === true) $sqlWhere = '';
-        else {
-            $wh = new Where($this->settings);
-            $sqlWhere = $wh->where($where, 'WHERE', $this->getNewNumberAlias());
-            $this->getNewNumberAlias($wh->numberAlias);
-            $this->addBinds($wh->getBinds());
-        }
+        $where = $this->preprocessorWhere($where);
+        if (is_array($where) && (count($where) === 0)) throw new GreenPigQueryException("Where expression is incorrectly composed. If you want to delete all records in this database table, then pass 'true'.", $where);
+        if ($where === true) $where = []; // Удаляем все записи в таблице
+        //---
+        $wh = new Where($this->settings);
+        $sqlWhere = $wh->where($where, 'WHERE', $this->getNewNumberAlias());
+        $this->getNewNumberAlias($wh->numberAlias);
+        $this->addBinds($wh->getBinds());
         $sql = "SELECT count(*) count_delete FROM $table $sqlWhere";
         $countDelete = $this->_execute($sql, 'first');
         $countDelete = (int)BaseFun::arrKeyTrimLower($countDelete)['count_delete'];
@@ -971,7 +990,7 @@ class Query
                 return $result;
             } else return $rawData[$nameColumn];
         }
-        return false;
+        return [];
     }
 
 
@@ -995,7 +1014,7 @@ class Query
             }
             return $result;
         }
-        return false;
+        return [];
     }
 
 
