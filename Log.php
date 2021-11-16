@@ -102,7 +102,11 @@ class Log
             $traceBacktrace = debug_backtrace();
             if (isset($traceBacktrace[1])) $trace = $traceBacktrace[1];
             if ($trace) {
-                $fileName = str_replace($_SERVER['DOCUMENT_ROOT'], '', $trace['file']);
+                // --- для windows ---
+                $dir = str_replace('\\', '/', $trace['file']);
+                $rootDir = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']);
+                // ---
+                $fileName = str_replace($rootDir, '', $dir);
                 $numberLine = $trace['line'];
             }
             $this->type = $this->validType($type);
@@ -121,7 +125,10 @@ class Log
 
     public function save($nameInstaceLog)
     {
-        $this->query::$logs[$nameInstaceLog] = $this;
+        // $this->query::$logs[$nameInstaceLog] = $this;     Это работает только в php 7
+        $query = &$this->query;
+        $query::$logs[$nameInstaceLog] = $this;
+        return $this;
     }
 
 
@@ -228,11 +235,12 @@ class Log
     {
         $tL = $this->tLog;
         $type = $this->validType($type);
-        return  $this->query->sql("SELECT * FROM {$tL['nameTable']} /*_greenpig_where_log_*/ /*_where_*/")
-                            ->where('/*_greenpig_where_log_*/', [
-                                        ["LOWER({$tL['type']})", '=', $type],
-                                        [$tL['title'], 'flex' => $title]
-                                    ]);
+        $this->query->sql("SELECT * FROM {$tL['nameTable']} /*_greenpig_where_log_*/ /*_where_*/")
+            ->where('/*_greenpig_where_log_*/', [
+                ["LOWER({$tL['type']})", '=', $type],
+                [$tL['title'], 'flex' => $title]
+            ]);
+        return $this->query;
     }
 
 
@@ -241,26 +249,27 @@ class Log
         $tL = $this->tLog;
         $tVL = $this->tValLog;
         $type = $this->validType($type);
-        return  $this->query->sql("SELECT  l.{$tL['id']},
-                                           l.{$tL['type']},
-                                           l.{$tL['title']},
-                                           l.{$tL['message']},
-                                           l.{$tL['ip']},
-                                           l.{$tL['file_name']},
-                                           l.{$tL['number_line']},
-                                           l.{$tL['date_create']},
-                                           vl.{$tVL['id']} val_log_id,
-                                           vl.{$tVL['log_id']},
-                                           vl.{$tVL['parent_id']},
-                                           vl.{$tVL['property']},
-                                           vl.{$tVL['val']}
-                                   FROM {$tL['nameTable']} l 
-                                   LEFT JOIN {$tVL['nameTable']} vl ON vl.{$tVL['log_id']} = l.{$tL['id']}
-                                   /*_greenpig_where_log_*/ /*_where_*/")
-                            ->where('/*_greenpig_where_log_*/', [
-                                ["LOWER({$tL['type']})", '=', $type],
-                                [$tL['title'], 'flex' => $title]
-                            ]);
+        $this->query->sql("SELECT  l.{$tL['id']},
+                                   l.{$tL['type']},
+                                   l.{$tL['title']},
+                                   l.{$tL['message']},
+                                   l.{$tL['ip']},
+                                   l.{$tL['file_name']},
+                                   l.{$tL['number_line']},
+                                   l.{$tL['date_create']},
+                                   vl.{$tVL['id']} val_log_id,
+                                   vl.{$tVL['log_id']},
+                                   vl.{$tVL['parent_id']},
+                                   vl.{$tVL['property']},
+                                   vl.{$tVL['val']}
+                           FROM {$tL['nameTable']} l 
+                           LEFT JOIN {$tVL['nameTable']} vl ON vl.{$tVL['log_id']} = l.{$tL['id']}
+                           /*_greenpig_where_log_*/ /*_where_*/")
+            ->where('/*_greenpig_where_log_*/', [
+                ["LOWER({$tL['type']})", '=', $type],
+                [$tL['title'], 'flex' => $title]
+            ]);
+        return $this->query;
     }
 
 
@@ -301,7 +310,8 @@ class Log
                           {$tL['number_line']} number,
                           {$tL['date_create']} date default sysdate not null
                         )";
-        $OracleLogPK = "alter table {$tL['nameTable']} add constraint log_id_pk primary key ({$tL['id']})";
+        $lPK = "gp_{$tL['nameTable']}_{$tL['id']}_pk";
+        $OracleLogPK = "alter table {$tL['nameTable']} add constraint $lPK primary key ({$tL['id']})";
         $OracleValLog = "create table {$tVL['nameTable']} (
                               {$tVL['id']}        number generated always as identity,
                               {$tVL['log_id']}    number not null,
@@ -309,7 +319,8 @@ class Log
                               {$tVL['property']}  varchar2(255) not null,
                               {$tVL['val']}       clob not null
                             )";
-        $OracleValLogPK = "alter table {$tVL['nameTable']} add constraint val_log_id_pk primary key ({$tVL['id']})";
+        $lvPK = "gp_{$tVL['nameTable']}_{$tVL['id']}_pk";
+        $OracleValLogPK = "alter table {$tVL['nameTable']} add constraint $lvPK primary key ({$tVL['id']})";
         // -------------------------------------------------------------------------------------------------------------
         if ($rdbms === 'oracle') {
             if ($table === 'all' || $table === 'log') {

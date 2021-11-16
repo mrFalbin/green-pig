@@ -1091,7 +1091,7 @@ class Query
 
     private function startDI()
     {
-         $this->timeStartQuerys = microtime(true);
+        $this->timeStartQuerys = microtime(true);
     }
 
 
@@ -1130,10 +1130,10 @@ class Query
 
 
 
-    public function newLog($type, $title, $message, $fileName = null, $numberLine = null)
+    public function newLog($type, $title, $message)
     {
         $log = new Log($this, $this->settings);
-        $log->writeLog($type, $title, $message, $fileName, $numberLine);
+        $log->writeLog($type, $title, $message);
         return $log;
     }
 
@@ -1160,14 +1160,16 @@ class Query
     public function sqlFullLog($type, $title)
     {
         $log = new Log($this, $this->settings);
-        return $log->sqlFullLog($type, $title);
+        $log->sqlFullLog($type, $title);
+        return $this;
     }
 
 
     public function sqlBasicLog($type, $title)
     {
         $log = new Log($this, $this->settings);
-        return $log->sqlBasicLog($type, $title);
+        $log->sqlBasicLog($type, $title);
+        return $this;
     }
 
 

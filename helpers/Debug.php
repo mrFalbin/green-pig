@@ -25,7 +25,11 @@ class Debug
             $traceBacktrace = debug_backtrace();
             $trace = $traceBacktrace[0];
             if(self::$_isGP) $trace = $traceBacktrace[1];
-            $dir = str_replace($_SERVER['DOCUMENT_ROOT'], '', $trace['file']);
+            // --- для windows ---
+            $dir = str_replace('\\', '/', $trace['file']);
+            $rootDir = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']);
+            // ---
+            $dir = str_replace($rootDir, '', $dir);
             $traceHTML = "$dir<span style='color: #DD0000'>:{$trace['line']}</span>";
             $htmlDump = <<<HTML
 <style type="text/css">
