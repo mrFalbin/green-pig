@@ -572,7 +572,7 @@ class Query
 
     private function genPaginationWithGroupSqlOracle($sql, $pk, $orderSelectGroup)
     {
-        $sqlUser = " /* --- start user request --- */ $sql /* --- end user request --- */ ";
+        $aliasWith = $this->gpAliasTable . $this->getNewNumberAlias();
         $selectOrGroup = $orderSelectGroup['order'] ? $orderSelectGroup['selectOrGroup'] : $pk;
         $order = $orderSelectGroup['order'] ? 'order by ' . $orderSelectGroup['order'] : '';
         $aliasRownum = $this->gpAliasRownum . $this->getNewNumberAlias();
@@ -587,11 +587,19 @@ class Query
             $aliasIndexStart => $indexStart,
             $aliasIndexEnd => $indexEnd
         ]);
-        $sql = "select * from ($sqlUser)
+        // Если не использовать with, то очень тяжелые запросы выполняются практически бесконечно,
+        // а с данной конструкцией все летает.
+        $sql = "with $aliasWith as (
+                    /* --- start user request --- */
+                    $sql
+                    /* --- end user request --- */
+                )
+                
+                select * from ($aliasWith)
                 where $pk in (
                     select $pk from (
                         select rownum $aliasRownum, $aliasTable1.* from (
-                            select $selectOrGroup from ( $sqlUser ) $aliasTable0
+                            select $selectOrGroup from ($aliasWith) $aliasTable0
                             group by $selectOrGroup
                             $order
                         ) $aliasTable1
