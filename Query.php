@@ -87,6 +87,7 @@ class Query
     private $sort = '';
     private $pagination = false;
     private $paginationLastRequest = false;
+    private $bindsLastRequest = [];
     private $rawData = '';
     private $debugInfo = [];
     private $bufDebugInfo = []; // промежуточный массив, накапливающий инфу о вспомогательных запросах
@@ -132,23 +133,9 @@ class Query
     }
 
 
-    public function linkBinds(&$binds)
-    {
-        $this->binds = &$binds;
-        return $this;
-    }
-
-
     public function addBinds($binds)
     {
         $this->binds = array_merge($this->binds, $binds);
-        return $this;
-    }
-
-
-    public function linkAddBinds(&$binds)
-    {
-        foreach ($binds as $key => &$val) $this->binds[$key] = &$val;
         return $this;
     }
 
@@ -160,10 +147,17 @@ class Query
     }
 
 
-    public function linkBind($alias, &$value)
+    public function getBind($alias = false)
     {
-        $this->binds[$alias] = &$value;
-        return $this;
+        if ($alias) {
+            $alias = BaseFun::trimLower($alias);
+            foreach ($this->bindsLastRequest as $k => $v) {
+                $name = BaseFun::trimLower($this->getNameBind($k));
+                if (($alias === BaseFun::trimLower($k)) || ($alias === $name)) return $v;
+            }
+            return null;
+        }
+        return $this->bindsLastRequest;
     }
 
 
@@ -1040,10 +1034,12 @@ class Query
 
 
 
-    private function _execute($sql, $typeSelect, $table = null, $primaryKey = null)
+    private function _execute($sql, $typeSelect, $table = null, $primaryKey = null, $sysBinds = null)
     {
         $sql = $this->genSqlPart($sql);
-        $binds = $this->getActualBinds($sql, $this->binds);
+        $binds = [];
+        if ($sysBinds) $binds = $sysBinds;
+        else $this->getActualBinds($sql, $binds);
         $result = [];
         if ($typeSelect == 'first') $result = $this->db->first($sql, $binds);
         elseif ($typeSelect == 'all') $result = $this->db->all($sql, $binds);
@@ -1066,18 +1062,21 @@ class Query
 
     // Если в массиве биндов значений больше чем нужно, то игнорируем лишние. Эта функция позволила решить проблему
     // с функцией update(), когда у нас есть ручные бинды как для where части, так и для update части.
-    private function getActualBinds($sql, $binds)
+    private function getActualBinds($sql, &$actualBinds)
     {
-        $actualBinds = [];
-        foreach ($binds as $k => $v) {
-            $nameBind = trim(str_replace(":", "", $k));
-            // Получаем все, что записано между квадратными скобками в бинде
-            preg_match_all("/\[(\w|\s)+\]/", $nameBind, $bindOptions);
-            $bindOptions = isset($bindOptions[0][0]) ? $bindOptions[0][0] : null;
-            $name = ':' . trim(str_replace($bindOptions, "", $nameBind));
-            if (strpos($sql, $name) !== false) $actualBinds[$k] = $v;
+        foreach ($this->binds as $k => &$v) {
+            $name = ':' . $this->getNameBind($k);
+            if (strpos($sql, $name) !== false) $actualBinds[$k] = &$v;
         }
-        return $actualBinds;
+    }
+
+
+    private function getNameBind($alias)
+    {
+        $nameBind = trim(str_replace(":", "", $alias));
+        preg_match_all("/\[(\w|\s)+\]/", $nameBind, $bindOptions);
+        $bindOptions = isset($bindOptions[0][0]) ? $bindOptions[0][0] : null;
+        return trim(str_replace($bindOptions, "", $nameBind));
     }
 
 
@@ -1125,6 +1124,7 @@ class Query
     {
         $this->baseSQL = '';
         $this->partsSql = [];
+        $this->bindsLastRequest = $this->binds;
         $this->binds = [];
         $this->numberAlias = 0;
         $this->sort = '';
