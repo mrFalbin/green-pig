@@ -3,6 +3,7 @@ namespace GreenPig;
 
 use GreenPig\Where;
 use GreenPig\Exception\GreenPigQueryException;
+use GreenPig\Exception\GreenPigDatabaseException;
 
 /**
  *  author:        Falbin
@@ -884,6 +885,71 @@ class Query
         $this->clearThisObject();
         $this->rawData = $countChange;
         return $countChange;
+    }
+
+
+    public function insertUpdate($table, $paramInsert, $paramUpdate)
+    {
+        $this->startDI();
+        $typeQuery = 'error';
+        $table = BaseFun::trimUpper($table);
+        $sqlDataInsert = $this->decomposedParameters($paramInsert);
+        $sqlDataUpdate = $this->decomposedParameters($paramUpdate);
+        $rdbms = BaseFun::getSettings($this->settings, 'rdbms');
+        if ($rdbms == 'oracle') {
+
+            $sysSql = "SELECT distinct cc.COLUMN_NAME FROM user_cons_columns cc
+                   JOIN user_constraints c ON c.constraint_name = cc.constraint_name
+                   WHERE c.table_name = :nametable AND (c.constraint_type = 'P' OR c.constraint_type = 'U')";
+            $columnNameU = $this->_execute($sysSql, 'all', null, null, ['nametable' => $table]);
+            $columnNameU = BaseFun::arrKeyTrimUpper($columnNameU);
+            $paramInsert = BaseFun::arrKeyTrimUpper($paramInsert);
+            $whArr = [];
+            foreach ($columnNameU as $cn) {
+                $n = $cn['COLUMN_NAME'];
+                if (isset($paramInsert[$n])) $whArr[] = [$n, '=', $paramInsert[$n]];
+            }
+            $wh = new Where($this->settings);
+            $sqlWhere = $wh->where($whArr, 'WHERE', $this->getNewNumberAlias());
+            $this->getNewNumberAlias($wh->numberAlias);
+            // ---
+            $sql = "BEGIN
+                  :v_dtype := 'insert';
+                  INSERT INTO $table ({$sqlDataInsert['insertColumn']}) VALUES ({$sqlDataInsert['insertValue']});
+                EXCEPTION
+                  WHEN DUP_VAL_ON_INDEX THEN
+                    :v_dtype := 'update';
+                    UPDATE $table SET {$sqlDataUpdate['update']} $sqlWhere;
+                END;";
+            $this->addBinds($sqlDataInsert['bind'])
+                ->addBinds($sqlDataUpdate['bind'])
+                ->addBinds($wh->getBinds())
+                ->addBinds(['v_dtype [7]' => &$typeQuery])
+                ->_execute($sql, 'execute');
+
+        } elseif ($rdbms == 'mysql') {
+
+            $sql = "INSERT INTO $table ({$sqlDataInsert['insertColumn']}) VALUES ({$sqlDataInsert['insertValue']}) ";
+            $this->addBinds($sqlDataInsert['bind']);
+            try {
+                $this->_execute($sql, 'insert');
+                $typeQuery = 'insert';
+            } catch (GreenPigDatabaseException $e) {
+                if (strpos($e->getMessage(), 'Integrity constraint violation') !== false) {
+                    $sql = "INSERT INTO $table ({$sqlDataInsert['insertColumn']}) VALUES ({$sqlDataInsert['insertValue']})
+                            ON DUPLICATE KEY 
+                            UPDATE {$sqlDataUpdate['update']}";
+                    $this->addBinds($sqlDataUpdate['bind']);
+                    $this->_execute($sql, 'execute');
+                    $typeQuery = 'update';
+                } else throw new GreenPigDatabaseException($e->getMessage(), $e, $sql, $this->binds);
+            }
+
+        }
+        $this->endDI();
+        $this->clearThisObject();
+        $this->rawData = [];
+        return $typeQuery;
     }
 
 
