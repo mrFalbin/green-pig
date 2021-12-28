@@ -6,6 +6,8 @@ use GreenPig\Database\DB;
 use GreenPig\Database\MySql;
 use GreenPig\Database\Oracle;
 use GreenPig\Helpers\Debug;
+use GreenPig\Helpers\Arr;
+use GreenPig\Helpers\Encoding;
 use GreenPig\Exception\GreenPigException;
 
 
@@ -146,4 +148,35 @@ class GP
         return Debug::varDumpExport($var, $isHighlight, $depth);
     }
 
+    // ----------------------------------------------------- Array -----------------------------------------------------
+
+    /**
+     * @param $arrOrObj array | Object
+     * @param $key string | array
+     * @param null $default
+     * @return mixed|null
+     */
+    public static function getVal($arrOrObj, $key, $default = null)
+    {
+        return Arr::getVal($arrOrObj, $key, $default);
+    }
+
+    // --------------------------------------------------- Encoding ----------------------------------------------------
+
+    public static function utf8($var, $from = 'windows-1251')
+    {
+        return Encoding::utf8($var, $from);
+    }
+
+    public static function cp1251($var, $from = 'utf-8')
+    {
+        return Encoding::cp1251($var, $from);
+    }
+
+    // ----------------------------------------------------- String ----------------------------------------------------
+
+    public static function trim($val)
+    {
+        return trim(preg_replace('/\s+/', ' ', $val));
+    }
 }
