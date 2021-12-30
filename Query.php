@@ -148,6 +148,13 @@ class Query
     }
 
 
+    public function linkBind($alias, &$value)
+    {
+        $this->binds[$alias] = &$value;
+        return $this;
+    }
+
+
     public function getBind($alias = false)
     {
         if ($alias) {

@@ -4,7 +4,6 @@
     "description": "database assistant",
     "keywords": ["oracle", "mysql", "database", "orm", "dao"],
     "license": "MIT",
-    "minimum-stability": "beta",
     "authors": [
         {
             "name": "Falbin",
