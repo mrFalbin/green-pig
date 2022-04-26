@@ -169,6 +169,7 @@ class GP
 
     public static function instance($nameConnection = 'default')
     {
+        $nameConnection = BaseFun::trimLower($nameConnection);
         if (empty(static::$config[$nameConnection])) throw new GreenPigException("Invalid connection name: $nameConnection", static::$config);
         $rdbms = BaseFun::getSettings(static::$config[$nameConnection], 'rdbms');
         $dbConfig = BaseFun::getSettings(static::$config[$nameConnection], 'db', false);

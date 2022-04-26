@@ -13,6 +13,7 @@ class Query
     private $baseSQL = '';
     private $partsSql = [];
     private $binds = [];
+    private $bindsWhere = [];
     private $numberAlias = 0;
     private $sort = '';
     private $pagination = false;
@@ -103,7 +104,7 @@ class Query
         $where = $this->preprocessorWhere($where);
         $wh = new Where($this->settings);
         $this->sqlPart($alias, $wh->where($where, $beginKeyword, $this->getNewNumberAlias()));
-        $this->addBinds($wh->getBinds());
+        $this->bindsWhere = array_merge($this->bindsWhere, $wh->getBinds());
         $this->numberAlias = $wh->numberAlias;
         return $this;
     }
@@ -135,7 +136,7 @@ class Query
         $sqlJoin = $this->genJoinEditWhere($where, $aliasTable, $nameTable, $conditionJoin);
         if (trim($sqlJoin)) $this->sqlPart($aliasJoin, $sqlJoin);
         $this->sqlPart($aliasWhere, $obWh->where($where, $beginKeywordWhere, $this->getNewNumberAlias()));
-        $this->addBinds($obWh->getBinds());
+        $this->bindsWhere = array_merge($this->bindsWhere, $obWh->getBinds());
         $this->numberAlias = $obWh->numberAlias;
         return $this;
     }
@@ -1066,6 +1067,7 @@ class Query
     // с функцией update(), когда у нас есть ручные бинды как для where части, так и для update части.
     private function getActualBinds($sql, &$actualBinds)
     {
+        $this->binds = array_merge($this->binds, $this->bindsWhere);
         foreach ($this->binds as $k => &$v) {
             $name = ':' . $this->getNameBind($k);
             if (strpos($sql, $name) !== false) $actualBinds[$k] = &$v;
@@ -1128,6 +1130,7 @@ class Query
         $this->partsSql = [];
         $this->bindsLastRequest = $this->binds;
         $this->binds = [];
+        $this->bindsWhere = [];
         $this->numberAlias = 0;
         $this->sort = '';
         $this->paginationLastRequest = $this->pagination;
