@@ -137,4 +137,15 @@ class BaseFun
         return mb_strtoupper(trim(preg_replace('/\s+/', ' ', $val)));
     }
 
+
+    public static function isInt($val)
+    {
+        if (is_int($val)) return true;
+        if (is_string($val)) {
+            preg_match('/^\d+$/', trim($val), $int);
+            return isset($int[0]);
+        }
+        return false;
+    }
+
 }

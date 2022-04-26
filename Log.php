@@ -231,45 +231,42 @@ class Log
     }
 
 
-    public function sqlBasicLog($type, $title)
-    {
-        $tL = $this->tLog;
-        $type = $this->validType($type);
-        $this->query->sql("SELECT * FROM {$tL['nameTable']} /*_greenpig_where_log_*/ /*_where_*/")
-            ->where('/*_greenpig_where_log_*/', [
-                ["LOWER({$tL['type']})", '=', $type],
-                [$tL['title'], 'flex' => $title]
-            ]);
-        return $this->query;
-    }
-
-
-    public function sqlFullLog($type, $title)
+    /**
+     * @param $id int | array
+     * @return array
+     * @throws Exception\GreenPigException
+     * @throws GreenPigLogException
+     */
+    public function getLog($id)
     {
         $tL = $this->tLog;
         $tVL = $this->tValLog;
-        $type = $this->validType($type);
-        $this->query->sql("SELECT  l.{$tL['id']},
-                                   l.{$tL['type']},
-                                   l.{$tL['title']},
-                                   l.{$tL['message']},
-                                   l.{$tL['ip']},
-                                   l.{$tL['file_name']},
-                                   l.{$tL['number_line']},
-                                   l.{$tL['date_create']},
-                                   vl.{$tVL['id']} val_log_id,
-                                   vl.{$tVL['log_id']},
-                                   vl.{$tVL['parent_id']},
-                                   vl.{$tVL['property']},
-                                   vl.{$tVL['val']}
-                           FROM {$tL['nameTable']} l 
-                           LEFT JOIN {$tVL['nameTable']} vl ON vl.{$tVL['log_id']} = l.{$tL['id']}
-                           /*_greenpig_where_log_*/ /*_where_*/")
-            ->where('/*_greenpig_where_log_*/', [
-                ["LOWER({$tL['type']})", '=', $type],
-                [$tL['title'], 'flex' => $title]
-            ]);
-        return $this->query;
+        // --- преобразовываем дату к формату, который указан в настройках ---
+        $date = " DATE_FORMAT(l.{$tL['date_create']}, ";
+        if (BaseFun::getSettings($this->settings, 'rdbms') === 'oracle') $date = " TO_CHAR(l.{$tL['date_create']}, ";
+        $date .= " '" . BaseFun::getSettings($this->settings, 'date/sql', false) . "') as {$tL['date_create']} ";
+        // ---
+        $this->query->sql("SELECT * FROM (
+                            SELECT  l.{$tL['id']},
+                                    l.{$tL['type']},
+                                    l.{$tL['title']},
+                                    l.{$tL['message']},
+                                    l.{$tL['ip']},
+                                    l.{$tL['file_name']},
+                                    l.{$tL['number_line']},
+                                    $date,
+                                    vl.{$tVL['id']} val_log_id,
+                                    vl.{$tVL['log_id']},
+                                    vl.{$tVL['parent_id']},
+                                    vl.{$tVL['property']},
+                                    vl.{$tVL['val']}
+                            FROM {$tL['nameTable']} l 
+                            LEFT JOIN {$tVL['nameTable']} vl ON vl.{$tVL['log_id']} = l.{$tL['id']}
+                         ) t /*_where_*/ ")
+                    ->where('/*_where_*/', $id)
+                    ->all();
+        // необходимо возвращать с ключами в нижнем регистре
+        return $this->query->getData('lower');
     }
 
 
@@ -341,23 +338,21 @@ class Log
     public function deleteLog($numberDay, $type, $title)
     {
         if (!is_int($numberDay)) throw new GreenPigLogException('$numberDay it should be integer.', $numberDay);
-        $numberDay = abs($numberDay);
         $rdbms = BaseFun::getSettings($this->settings, 'rdbms');
         $tL = $this->tLog;
         $tVL = $this->tValLog;
         $type = $this->validType($type);
-        $binds['numberDay'] = $numberDay;
-        $where = [
-            ["LOWER({$tL['type']})", '=', $type],
-            [$tL['title'], 'flex' => $title]
-        ];
-        if ($rdbms === 'oracle') $where[] = [$tL['date_create'], '<', 'sql' => 'SYSDATE - :numberDay'];
-        else $where[] = [$tL['date_create'], '<', 'sql' => 'NOW() - INTERVAL :numberDay DAY'];
+        $binds['numberDay'] = abs($numberDay);
         $idsForDel = [];
+        $whereSql = $rdbms === 'oracle' ? 'SYSDATE - :numberDay' : 'NOW() - INTERVAL :numberDay DAY';
         $result = $this->query
                         ->sql("SELECT {$tL['id']} id FROM {$tL['nameTable']} /*where*/")
                         ->binds($binds)
-                        ->where('/*where*/', $where)
+                        ->where('/*where*/', [
+                            ["LOWER({$tL['type']})", '=', $type],
+                            [$tL['title'], 'flex' => $title],
+                            [$tL['date_create'], '<', 'sql' => $whereSql]
+                        ])
                         ->all();
         if (count($result) > 0) {
             $nameId = false;
@@ -365,14 +360,18 @@ class Log
             if (isset($result[0]['id'])) $nameId = 'id';
             if ($nameId) $idsForDel = $this->query->column($nameId);
         }
-        $countDeleteVL = $this->query->delete($tVL['nameTable'], [$tVL['log_id'], 'in', $idsForDel]);
-        $countDeleteL = $this->query->delete($tL['nameTable'], [$tL['id'], 'in', $idsForDel]);
+        $countDeleteL = 0;
+        $countDeleteVL = 0;
+        if (count($idsForDel)) {
+            $countDeleteVL = $this->query->delete($tVL['nameTable'], [$tVL['log_id'], 'in', $idsForDel]);
+            $countDeleteL = $this->query->delete($tL['nameTable'], [$tL['id'], 'in', $idsForDel]);
+        }
         return ['log'=> $countDeleteL, 'val_log' => $countDeleteVL];
     }
 
 
     /**
-     * Из плоского ответа из базы $arr формируем такой ответ:
+     * Из плоского ответа из базы $arr формируем такой ответ для конаничного вида:
      *  [
      *      [
      *          'id' => 8,
@@ -410,10 +409,71 @@ class Log
      *      .....
      *  ]
      *
+     *  Для канонического вида значение из property это ключ массива, а его значение обязательно имеет следующую структуру:
+     *  [
+     *      property => [
+     *          'val' => [значение],
+     *          'child' => []
+     *      ]
+     *  ]
+     *  Т.е. массив состоит из двух элементов:
+     *      val - значение которого также является массивом, даже если там одно значение.
+     *      child - массив с дочерними элементами, если они отсутствуют то массив пустой.
+     *  Если в val находится json, то он никак не преобразовывается, остается просто строкой.
+     *
+     *
+     *  Так же есть обычный вид, который максимально человекочитаем, а также если в val находится json,
+     *  то он преобразуется в массив:
+     *      .....
+     *      properties => [
+     *          'sizeBackup' => 10249,
+     *          'server' => [
+     *              'val' => '192.168.0.99',
+     *              'child' => [
+     *                  'freePlace' => 23944556,
+     *                  'percentFreePlace' => '20%'
+     *              ]
+     *          ],
+     *          'email' => ['admin@mail.ru', 'support@mail.ru', 'vasya@mail.ru']
+     *      ]
+     *      .....
+     *
+     *
      * @param $arr array (ключи всегда приходят в нижнем регистре)
      * @return array
      */
-    public function getDataLog($arr) {
+    public function getDataLog($arr, $isCanon = true) {
+        $id = $this->tLog['id'];
+        $parent_id = $this->tValLog['parent_id'];
+        // ---------- группируем логи ----------
+        $groupLog = [];
+        foreach ($arr as $a) {
+            if (isset($groupLog[$a[$id]])) {
+                $groupLog[$a[$id]]['properties'][] = $this->addPropertyBufGroupLog($a);
+            } else {
+                $groupLog[$a[$id]] = $this->addBasicBufGroupLog($a);
+                if (isset($a['val_log_id'])) {
+                    $groupLog[$a[$id]]['properties'][] = $this->addPropertyBufGroupLog($a);
+                }
+            }
+        }
+        // ---------- строим древовидную структуру для свойств ----------
+        foreach ($groupLog as &$gl) {
+            // формируем массив, ключами которого являются id свойств у которого есть потомки, а значения - это массив этих потомков
+            $parents = [];
+            foreach ($gl['properties'] as $p) {
+                $parents[$p[$parent_id] ?: 0][] = $p;
+            }
+            // рекурсивно строим иерархию
+            if ($isCanon) $gl['properties'] = isset($parents[0]) ? $this->buildCanonLevelsLog($parents[0], $parents) : [];
+            else $gl['properties'] = isset($parents[0]) ? $this->buildLevelsLog($parents[0], $parents) : [];
+        }
+        // ---------- возвращаем массив с индексами от 0 до n ----------
+        return array_values($groupLog);
+    }
+
+    private function addBasicBufGroupLog($arr)
+    {
         // ---------- log ----------
         $id = $this->tLog['id'];
         $type = $this->tLog['type'];
@@ -423,40 +483,7 @@ class Log
         $file_name = $this->tLog['file_name'];
         $number_line = $this->tLog['number_line'];
         $date_create = $this->tLog['date_create'];
-        // ---------- val_log ----------
-        $log_id = $this->tValLog['log_id'];
-        $parent_id = $this->tValLog['parent_id'];
-        $property = $this->tValLog['property'];
-        $val = $this->tValLog['val'];
-        // ---------- группируем логи ----------
-        $groupLog = [];
-        foreach ($arr as $a) {
-            if (isset($groupLog[$a[$id]])) {
-                $groupLog[$a[$id]]['properties'][] = $this->addPropertyBufGroupLog($a, $log_id, $parent_id, $property, $val);
-            } else {
-                $groupLog[$a[$id]] = $this->addBasicBufGroupLog($a, $id, $type, $title, $message, $ip, $file_name, $number_line, $date_create);
-                if (isset($a['val_log_id'])) {
-                    $groupLog[$a[$id]]['properties'][] = $this->addPropertyBufGroupLog($a, $log_id, $parent_id, $property, $val);
-                }
-            }
-        }
-        // ---------- строим древовидную структуру для свойств ----------
-
-        foreach ($groupLog as &$gl) {
-            // формируем массив, ключами которого являются id свойств у которого есть потомки, а значения - это массив этих потомков
-            $parents = [];
-            foreach ($gl['properties'] as $p) {
-                $parents[$p['parent_id'] ?: 0][] = $p;
-            }
-            // рекурсивно строим иерархию
-            $gl['properties'] = $this->buildLevelsLog(isset($parents[0]) ? $parents[0] : [], $parents, $val, $property);
-        }
-        // ---------- возвращаем массив с индексами от 0 до n ----------
-        return array_values($groupLog);
-    }
-
-    private function addBasicBufGroupLog($arr, $id, $type, $title, $message, $ip, $file_name, $number_line, $date_create)
-    {
+        // ----------
         return [
             $id => $arr[$id],
             $type => $arr[$type],
@@ -470,8 +497,14 @@ class Log
         ];
     }
 
-    private function addPropertyBufGroupLog($arr, $log_id, $parent_id, $property, $val)
+    private function addPropertyBufGroupLog($arr)
     {
+        // ---------- val_log ----------
+        $log_id = $this->tValLog['log_id'];
+        $parent_id = $this->tValLog['parent_id'];
+        $property = $this->tValLog['property'];
+        $val = $this->tValLog['val'];
+        // ----------
         return [
             'val_log_id' => $arr['val_log_id'],
             $log_id => $arr[$log_id],
@@ -481,14 +514,45 @@ class Log
         ];
     }
 
-    private function buildLevelsLog($arr, $parents, $val, $property)
+    private function buildCanonLevelsLog($arr, $parents)
     {
+        // ---------- val_log ----------
+        $property = $this->tValLog['property'];
+        $val = $this->tValLog['val'];
+        // ----------
         $result = [];
         foreach ($arr as $a) {
-            if (isset($result[$a[$property]])) $result[$a[$property]][$val][] = $a[$val];
-            else $result[$a[$property]] = [$val => [$a[$val]], 'child' => []];
+            if (isset($result[$a[$property]])) $result[$a[$property]]['val'][] = $a[$val];
+            else $result[$a[$property]] = ['val' => [$a[$val]], 'child' => []];
             if (isset($parents[$a['val_log_id']])) { // значит у этого элемента есть дочки
-                $result[$a[$property]]['child'] = $this->buildLevelsLog($parents[$a['val_log_id']], $parents, $val, $property);
+                $result[$a[$property]]['child'] = $this->buildCanonLevelsLog($parents[$a['val_log_id']], $parents);
+            }
+        }
+        return $result;
+    }
+
+    private function buildLevelsLog($arr, $parents)
+    {
+        // ---------- val_log ----------
+        $property = $this->tValLog['property'];
+        $val = $this->tValLog['val'];
+        // ----------
+        $result = [];
+        foreach ($arr as $a) {
+            $v = json_decode($a[$val]) ?: $a[$val];
+            if (isset($result[$a[$property]])) {
+                if (is_array($result[$a[$property]])) $result[$a[$property]][] = $v;
+                else $result[$a[$property]] = [$result[$a[$property]], $v];
+            } else {
+                if (is_array($v)) $result[$a[$property]] = [$v];
+                else $result[$a[$property]] = $v;
+            }
+            // --- значит у этого элемента есть дочки ---
+            if (isset($parents[$a['val_log_id']])) {
+                $result[$a[$property]] = [
+                    'val' => $result[$a[$property]],
+                    'child' => $this->buildLevelsLog($parents[$a['val_log_id']], $parents)
+                ];
             }
         }
         return $result;

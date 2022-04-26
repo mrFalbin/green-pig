@@ -1,4 +1,5 @@
 .DS_Store
 .idea
+t.php
 vendor/*
 phpunit-4.0.0.phar
