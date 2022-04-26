@@ -25,7 +25,7 @@ class Oracle extends DB
         $pas = empty($options['password']) ? null : $options['password'];
         $cs = empty($options['connection_string']) ? null : $options['connection_string'];
         $chr = empty($options['character_set']) ? null : $options['character_set'];
-        $mod = empty($options['session_mode']) ? null : $options['session_mode'];
+        $mod = empty($options['session_mode']) ? OCI_DEFAULT : $options['session_mode'];
         if ($usr && $pas) {
             $this->db = oci_connect($usr, $pas, $cs, $chr, $mod);
             if (!$this->db) {
@@ -175,10 +175,13 @@ class Oracle extends DB
             $alias = $bindOptions['alias'];
             $type = SQLT_CHR;
             if ($bindOptions['type'] == 'int') $type = OCI_B_INT;
+            if ($bindOptions['type'] == 'bool') $type = OCI_B_BOL;
             if ($bindOptions['type'] == 'clob') {
                 $this->clobArr[$alias] = oci_new_descriptor($this->db, OCI_D_LOB);
                 oci_bind_by_name($stmt, ":$alias", $this->clobArr[$alias], -1, OCI_B_CLOB);
                 $this->clobArr[$alias]->writeTemporary($val);
+            } elseif ($bindOptions['type'] == 'array') {
+                oci_bind_array_by_name($stmt, ":$alias", $val, count($val), -1, $bindOptions['typeArr']);
             } else {
                 oci_bind_by_name($stmt, ":$alias", $val, $bindOptions['maxlength'], $type);
             }

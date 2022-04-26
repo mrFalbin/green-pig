@@ -129,7 +129,7 @@ class MySql extends DB
         foreach ($bind as $key => &$value) {
             $bindOptions = $this->getBindOptions($key);
             $alias = $bindOptions['alias'];
-            $maxlength = $bindOptions['maxlength'] == -1 ? null : $bindOptions['maxlength'];
+            $maxlength = 0; // $bindOptions['maxlength'] == -1 ? 0 : $bindOptions['maxlength'];
             $type = PDO::PARAM_STR | PDO::PARAM_INPUT_OUTPUT;
             switch ($bindOptions['type']) {
                 case 'int': $type = PDO::PARAM_INT; break;

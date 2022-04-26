@@ -1076,9 +1076,9 @@ class Query
     private function getNameBind($alias)
     {
         $nameBind = trim(str_replace(":", "", $alias));
-        preg_match_all("/\[(\w|\s)+\]/", $nameBind, $bindOptions);
-        $bindOptions = isset($bindOptions[0][0]) ? $bindOptions[0][0] : null;
-        return trim(str_replace($bindOptions, "", $nameBind));
+        preg_match_all("/\[(.+)\]/", $nameBind, $bindOptions);
+        if (isset($bindOptions[0][0])) $nameBind = str_replace($bindOptions[0][0], "", $nameBind);
+        return trim($nameBind);
     }
 
 

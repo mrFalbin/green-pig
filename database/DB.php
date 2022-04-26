@@ -90,22 +90,49 @@ abstract class DB
     protected function getBindOptions($nameBind)
     {
         $nameBind = trim(str_replace(":", "", $nameBind));
-        // --- Получаем все, что записано между квадратными скобками ---
-        preg_match_all("/\[(\w|\s)+\]/", $nameBind, $bindOptions);
-        $bindOptions = isset($bindOptions[0][0]) ? $bindOptions[0][0] : null;
-        $name = trim(str_replace($bindOptions, "", $nameBind));
-        $bindOptions = str_replace(['[', ']'], "", $bindOptions);
-        // ---
-        preg_match_all("/\d+/", $bindOptions, $maxlength);
-        $maxlength = isset($maxlength[0][0]) ? (int)$maxlength[0][0] : -1;
-        // ---
-        preg_match_all("/[a-zA-Z]+/", $bindOptions, $typeStr);
-        $typeStr = isset($typeStr[0][0]) ? mb_strtolower($typeStr[0][0]) : 'str';
-        // ---
+        // --- в случае если нет [] с дополнительными настройками  ---
+        $name = $nameBind;
+        $typeStr = 'str';
+        $maxlength = -1;
+        $typeArr = null;
+        // --- если есть [], работаем с данными внутри скобок ---
+        preg_match_all("/\[(.+)\]/", $nameBind, $bindOptions); // Получаем все, что записано между []
+        if (isset($bindOptions[0][0])) {
+            $name = trim(str_replace($bindOptions[0][0], "", $name));
+            $bindOptions = $bindOptions[1][0];
+            $typeStr = $bindOptions; // присваеваем все что между []
+            // --- если есть число, то это maxlength ---
+            preg_match_all("/\d+/", $bindOptions, $bufMaxlength);
+            if (isset($bufMaxlength[0][0])) {
+                $typeStr = str_replace($bufMaxlength[0][0], "", $typeStr); // исключаем число (maxlength)
+                $maxlength = (int)$bufMaxlength[0][0];
+            }
+            // --- Если есть (), то в них тип коллекции, при этом подразумевается что typeStr должен быть array ---
+            preg_match_all("/\((.+)\)/", $bindOptions, $typeArrName);
+            if (isset($typeArrName[0][0])) {
+                $typeStr = str_replace($typeArrName[0][0], "", $typeStr); // исключаем ()
+                switch (trim($typeArrName[1][0])) {
+                    case 'SQLT_NUM': $typeArr = SQLT_NUM; break;
+                    case 'SQLT_INT': $typeArr = SQLT_INT; break;
+                    case 'SQLT_FLT': $typeArr = SQLT_FLT; break;
+                    case 'SQLT_AFC': $typeArr = SQLT_AFC; break;
+                    case 'SQLT_CHR': $typeArr = SQLT_CHR; break;
+                    case 'SQLT_VCS': $typeArr = SQLT_VCS; break;
+                    case 'SQLT_AVC': $typeArr = SQLT_AVC; break;
+                    case 'SQLT_STR': $typeArr = SQLT_STR; break;
+                    case 'SQLT_LVC': $typeArr = SQLT_LVC; break;
+                    case 'SQLT_ODT': $typeArr = SQLT_ODT; break;
+                    default: $typeArr = SQLT_CHR;
+                }
+            }
+            // ---
+            $typeStr = mb_strtolower(trim($typeStr)) ?: 'str';
+        }
         return [
             'alias'   => $name,
             'type'      => $typeStr,
-            'maxlength' => $maxlength
+            'maxlength' => $maxlength,
+            'typeArr' => $typeArr
         ];
     }
 
@@ -116,9 +143,10 @@ abstract class DB
             foreach ($bind as $alias => $val) {
                 $aliasOptions = $this->getBindOptions($alias);
                 if ($aliasOptions['type'] != 'clob') {
-                    $val = is_int($val) ? $val : " '$val' ";
-                    $sql = str_replace(':' . $aliasOptions['alias'], $val, $sql);
-                }
+                    if (is_array($val)) $val = '[array]';
+                    else $val = is_int($val) ? $val : " '$val' ";
+                } else $val = '[clob]';
+                $sql = str_replace(':' . $aliasOptions['alias'], $val, $sql);
             }
             $sqlWithVal = $sql;
         }
