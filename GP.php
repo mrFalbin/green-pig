@@ -246,10 +246,36 @@ class GP
         return Encoding::cp1251($var, $from);
     }
 
-    // ----------------------------------------------------- String ----------------------------------------------------
+    // -----------------------------------------------------------------------------------------------------------------
 
     public static function trim($val)
     {
-        return trim(preg_replace('/\s+/', ' ', $val));
+        return is_string($val) ? trim(preg_replace('/\s+/', ' ', $val)) : $val;
     }
+
+
+    public static function scriptRunningTime($timeStart, $isDraw = false, $precision = 3) {
+        $timeJob = microtime(true) - $timeStart;
+        $precision = pow(10, $precision);
+        $remainderSecond = fmod($timeJob, 1);
+        $remainderSecond = floor($remainderSecond * $precision ) / $precision;
+        $result = [
+            'minute' => floor($timeJob / 60),
+            'second' => (floor($timeJob) % 60) + $remainderSecond,
+            'allSeconds' => floor($timeJob * $precision ) / $precision
+        ];
+        if ($isDraw) {
+            echo "<div style='background-color: #ddd; color: #000; padding: 4px; border-top: solid 1px #000; font-size: 14px; position: fixed; bottom: 0; left: 0; width: 100%;'>
+                Время работы скрипта: <b>{$result['minute']}</b> мин. <b>{$result['second']}</b> сек.
+              </div>";
+        }
+        return $result;
+    }
+
+
+    public static function isAjax()
+    {
+        return BaseFun::getSettings($_SERVER, 'http_x_requested_with', true, false) === 'xmlhttprequest';
+    }
+
 }

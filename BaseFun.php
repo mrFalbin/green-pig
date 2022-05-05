@@ -128,13 +128,13 @@ class BaseFun
 
     public static function trimLower($val)
     {
-        return mb_strtolower(trim(preg_replace('/\s+/', ' ', $val)));
+        return is_string($val) ? mb_strtolower(trim(preg_replace('/\s+/', ' ', $val))) : $val;
     }
 
 
     public static function trimUpper($val)
     {
-        return mb_strtoupper(trim(preg_replace('/\s+/', ' ', $val)));
+        return is_string($val) ? mb_strtoupper(trim(preg_replace('/\s+/', ' ', $val))) : $val;
     }
 
 

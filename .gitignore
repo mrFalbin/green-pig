@@ -1,5 +1,5 @@
 .DS_Store
 .idea
-t.php
+test/*
 vendor/*
 phpunit-4.0.0.phar
