@@ -382,8 +382,22 @@ class Where
                 foreach ($logOperation[2] as $val) {
                     $aliases[] = ':' . $this->genAliasAndSetBind($val);
                 }
-                $aliases = implode(", ", $aliases);
-                $logOp = [$logOperation[0], $logOperation[1], 'sql' => "($aliases)"];
+                // В Oracle не может быть больше 1000 элементов у оператора in, поэтому добовляем небольшое извращение
+                $nameRDBMS = BaseFun::getSettings($this->settings, 'rdbms');
+                if ((count($aliases) > 1000) && $nameRDBMS === 'oracle') {
+                    $bufSql = '';
+                    $aliases = array_chunk($aliases, 1000);
+                    $i=0;
+                    foreach ($aliases as $al) {
+                        $bufSql .= " $logOperation[0] in (". implode(', ', $al) .')';
+                        $bufSql .= ++$i < count($aliases) ? ' or ' : '';
+                    }
+                    $bufSql = " ($bufSql) ";
+                } else {
+                    $aliases = implode(", ", $aliases);
+                    $bufSql = " $logOperation[0] $logOperation[1] ($aliases) ";
+                }
+                return $bufSql;
             }
             elseif ($typeLogOp['action'] == 'sql') $logOp = $logOperation;
             else throw new GreenPigWhereException('ERROR in logical operation.', $logOperation, $this->where);

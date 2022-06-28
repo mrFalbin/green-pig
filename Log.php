@@ -75,13 +75,8 @@ class Log
 
     private function validType($type)
     {
-        if (is_string($type)) {
-            $type = BaseFun::trimLower($type);
-            if ($type === self::LOG_INFO || $type === self::LOG_DEBUG ||
-                $type === self::LOG_ERROR || $type === self::LOG_WARNING) {
-                return $type;
-            }
-        }
+        $type = BaseFun::trimLower($type);
+        if (in_array($type, [self::LOG_INFO, self::LOG_DEBUG, self::LOG_ERROR, self::LOG_WARNING])) return $type;
         throw new GreenPigLogException("Invalid type log! Valid values: error, warning, debug, info.", $type);
     }
 
@@ -140,6 +135,20 @@ class Log
                 [$this->tLog['message'] => $txt],
                 [$this->tLog['id'], '=', $this->id]
             );
+        }
+        return $this;
+    }
+
+
+    /**
+     * @param string $type Допустимые значения: info, debug, warning, error
+     * @return $this
+     * @throws GreenPigLogException
+     */
+    public function setType($type)
+    {
+        if ($this->isWriteLog()) {
+            $this->query->update($this->tLog['nameTable'], [$this->tLog['type'] => $this->validType($type)], $this->id);
         }
         return $this;
     }

@@ -43,9 +43,10 @@ class Query
 
 
 
-    public function sql($baseSQL)
+    public function sql($baseSQL, $binds = null)
     {
         $this->baseSQL = $baseSQL;
+        if (is_array($binds)) $this->binds($binds);
         return $this;
     }
 

@@ -12,7 +12,7 @@ use GreenPig\Exception\GreenPigException;
 
 
 /**
- *  version:       2.1.0
+ *  version:       2.1.1
  *  author:        Falbin
  *  email:         ifalbin@yandex.ru
  *  homepage:      https://falbin.ru
