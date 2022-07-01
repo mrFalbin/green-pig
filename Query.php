@@ -106,7 +106,7 @@ class Query
         $wh = new Where($this->settings);
         $this->sqlPart($alias, $wh->where($where, $beginKeyword, $this->getNewNumberAlias()));
         $this->bindsWhere = array_merge($this->bindsWhere, $wh->getBinds());
-        $this->numberAlias = $wh->numberAlias;
+        $this->setNumberAlias($wh->getNumberAlias());
         return $this;
     }
 
@@ -138,7 +138,7 @@ class Query
         if (trim($sqlJoin)) $this->sqlPart($aliasJoin, $sqlJoin);
         $this->sqlPart($aliasWhere, $obWh->where($where, $beginKeywordWhere, $this->getNewNumberAlias()));
         $this->bindsWhere = array_merge($this->bindsWhere, $obWh->getBinds());
-        $this->numberAlias = $obWh->numberAlias;
+        $this->setNumberAlias($obWh->getNumberAlias());
         return $this;
     }
 
@@ -810,7 +810,7 @@ class Query
         if (!(is_array($where) && count($where))) throw new GreenPigQueryException('Where expression is incorrectly composed.', $where);
         $wh = new Where($this->settings);
         $sqlWhere = $wh->where($where, 'WHERE', $this->getNewNumberAlias());
-        $this->getNewNumberAlias($wh->numberAlias);
+        $this->setNumberAlias($wh->getNumberAlias());
         $this->addBinds($wh->getBinds());
         $sql = "SELECT count(*) count_update FROM $table $sqlWhere";
         $countChange = $this->_execute($sql, 'first');
@@ -849,7 +849,7 @@ class Query
             }
             $wh = new Where($this->settings);
             $sqlWhere = $wh->where($whArr, 'WHERE', $this->getNewNumberAlias());
-            $this->getNewNumberAlias($wh->numberAlias);
+            $this->setNumberAlias($wh->getNumberAlias());
             // ---
             $sql = "BEGIN
                   :v_dtype := 'insert';
@@ -930,7 +930,7 @@ class Query
         //---
         $wh = new Where($this->settings);
         $sqlWhere = $wh->where($where, 'WHERE', $this->getNewNumberAlias());
-        $this->getNewNumberAlias($wh->numberAlias);
+        $this->setNumberAlias($wh->getNumberAlias());
         $this->addBinds($wh->getBinds());
         $sql = "SELECT count(*) count_delete FROM $table $sqlWhere";
         $countDelete = $this->_execute($sql, 'first');
@@ -1045,14 +1045,19 @@ class Query
         if ($sysBinds) $binds = $sysBinds;
         else $this->getActualBinds($sql, $binds);
         $result = [];
-        if ($typeSelect == 'first') $result = $this->db->first($sql, $binds);
-        elseif ($typeSelect == 'all') $result = $this->db->all($sql, $binds);
-        elseif ($typeSelect == 'execute') $result = $this->db->execute($sql, $binds);
-        elseif ($typeSelect == 'insert') {
-            if (!empty($table)) $result = $this->db->insert($sql, $binds, $table, $primaryKey);
-            else $result = $this->db->insert($sql, $binds);
+        try {
+            if ($typeSelect == 'first') $result = $this->db->first($sql, $binds);
+            elseif ($typeSelect == 'all') $result = $this->db->all($sql, $binds);
+            elseif ($typeSelect == 'execute') $result = $this->db->execute($sql, $binds);
+            elseif ($typeSelect == 'insert') {
+                if (!empty($table)) $result = $this->db->insert($sql, $binds, $table, $primaryKey);
+                else $result = $this->db->insert($sql, $binds);
+            } else throw new GreenPigQueryException('Wrong variable format typeSelect.', $typeSelect);
+        } catch (\Exception $e) {
+            $this->endDI();
+            $this->clearThisObject();
+            throw $e;
         }
-        else throw new GreenPigQueryException('Wrong variable format typeSelect.', $typeSelect);
         $dbDebugInfo = $this->db->getDebugInfo();
         if (count($this->bufDebugInfo) > 1000) $this->bufDebugInfo = [];
         if (!empty($dbDebugInfo[0]) && is_array($dbDebugInfo[0])) {
@@ -1068,10 +1073,11 @@ class Query
     // с функцией update(), когда у нас есть ручные бинды как для where части, так и для update части.
     private function getActualBinds($sql, &$actualBinds)
     {
+        $sql .= ' '; // на случий если запрос окончится биндом
         $this->binds = array_merge($this->binds, $this->bindsWhere);
         foreach ($this->binds as $k => &$v) {
-            $name = ':' . $this->getNameBind($k);
-            if (strpos($sql, $name) !== false) $actualBinds[$k] = &$v;
+            $pattern = '/\:' . $this->getNameBind($k) .'\D/';
+            if (preg_match($pattern, $sql)) $actualBinds[$k] = &$v;
         }
     }
 
@@ -1094,10 +1100,15 @@ class Query
     }
 
 
-    private function getNewNumberAlias($numberAlias = null)
+    private function getNewNumberAlias()
     {
-        if (is_int($numberAlias)) $this->numberAlias = $numberAlias;
         return ++$this->numberAlias;
+    }
+
+
+    private function setNumberAlias($numberAlias)
+    {
+        if (is_int($numberAlias) && ($numberAlias > $this->numberAlias)) $this->numberAlias = $numberAlias;
     }
 
 

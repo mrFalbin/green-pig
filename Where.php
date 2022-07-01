@@ -10,7 +10,8 @@ class Where
     private $binds;
     private $settings;
     private $where;
-    public  $numberAlias;
+    private $numberAlias;
+    private $originalNumberAlias;
 
 
     public function __construct($settings) {
@@ -53,6 +54,7 @@ class Where
         $this->where = $where;
         if (!is_array($where)) throw new GreenPigWhereException('Expression is incorrectly composed.', $where, $this->where);
         $this->binds = [];
+        $this->originalNumberAlias = $numberAlias;
         $this->numberAlias = $numberAlias;
         $where = $this->formattingWhere($where);
         if (count($where) === 0) return '';
@@ -452,6 +454,12 @@ class Where
         $alias = 'greenpig_alias_where_'. $this->numberAlias++;
         $this->binds[$alias] = $val;
         return $alias;
+    }
+
+    public function getNumberAlias()
+    {
+        if ($this->numberAlias > $this->originalNumberAlias) return $this->numberAlias - 1;
+        return $this->originalNumberAlias;
     }
 
 

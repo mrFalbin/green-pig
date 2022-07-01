@@ -18,6 +18,7 @@ class Log
     private $tValLog;
     private $properties = [];
     private $type;
+    private $message;
     private $id;
 
 
@@ -105,6 +106,7 @@ class Log
                 $numberLine = $trace['line'];
             }
             $this->type = $this->validType($type);
+            $this->message = $message;
             $this->id = $this->query->insert($this->tLog['nameTable'], [
                 $this->tLog['type'] => $this->type,
                 $this->tLog['title'] => $title,
@@ -127,9 +129,10 @@ class Log
     }
 
 
-    public function message($txt)
+    public function setMessage($txt)
     {
         if ($this->isWriteLog()) {
+            $this->message = $txt;
             $this->query->update(
                 $this->tLog['nameTable'],
                 [$this->tLog['message'] => $txt],
@@ -137,6 +140,12 @@ class Log
             );
         }
         return $this;
+    }
+
+
+    public function getMessage()
+    {
+        return $this->message;
     }
 
 
@@ -148,9 +157,23 @@ class Log
     public function setType($type)
     {
         if ($this->isWriteLog()) {
-            $this->query->update($this->tLog['nameTable'], [$this->tLog['type'] => $this->validType($type)], $this->id);
+            $this->type = $this->validType($type);
+            $this->query->update(
+                $this->tLog['nameTable'],
+                [$this->tLog['type'] => $this->type],
+                [$this->tLog['id'], '=', $this->id]
+            );
         }
         return $this;
+    }
+
+
+    /**
+     * @return string Возможные значения: info, debug, warning, error
+     */
+    public function getType()
+    {
+        return $this->type;
     }
 
 
